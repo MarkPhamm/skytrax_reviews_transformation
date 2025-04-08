@@ -1,0 +1,52 @@
+fct_review
+----------
+review_id PK int
+customer_id int FK >- dim_customer.customer_id
+date_submitted_id int FK >- dim_date.date_id
+date_flown_id int FK >- dim_date.date_id
+origin_airport_id int FK >- dim_airport.airport_id
+destination_airport_id int FK >- dim_airport.airport_id
+transit_airport_id NULL int FK >- dim_airport.airport_id
+aircraft_id NULL int FK >- dim_aircraft.aircraft_id
+verified bool
+seat_type string
+type_of_traveller NULL string
+seat_comfort NULL int
+cabin_staff_service NULL int
+food_and_beverages NULL int
+inflight_entertainment NULL float
+ground_service NULL float
+wifi_and_connectivity NULL int
+value_for_money int
+recommended bool
+review_text string
+
+dim_customer
+------------
+customer_id PK int
+customer_name string INDEX
+nationality string
+number_of_flights int
+
+dim_date
+--------
+date_id PK int
+date date UNIQUE
+year int
+quarter int
+month int
+day int
+weekday string
+
+dim_airport
+-----------
+airport_id PK int
+city string
+airport_name string
+
+dim_aircraft
+------------
+aircraft_id PK int
+aircraft_model string
+aircraft_manufacturer string
+seat_capacity int
