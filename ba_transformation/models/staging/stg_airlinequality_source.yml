@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+- name: AIRLINEQUALITY
+  description: Deprecated raw reviews data from Air Inequality
+  database: BRITISH_DB
+  schema: RAW
+  tables:
+  - name: REVIEW
+    description: One record per review.
+    quoting:
+      database: true
+      schema: true
+      identifier: true
