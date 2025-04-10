@@ -21,7 +21,7 @@ connection_url = (
 engine = create_engine(connection_url)
 
 # Load data with pandas
-query = "SELECT * FROM BRITISH_DATA;"
+query = "SELECT * REVIEW;"
 df = pd.read_sql(query, engine)
 
 print(df.head())
