@@ -31,10 +31,14 @@ clean-targets:
 models:
   ba_transformation:
     # Config indicated by + and applies to all files under models/example/
-    example:
+    staging:
       +materialized: view
+      +schema: staging
+    marts:
+      +materialized: table
+      +schema: MARTS
 
 seeds:
   ba_transformation:
-    review:
+    reviews:
       schema: RAW
