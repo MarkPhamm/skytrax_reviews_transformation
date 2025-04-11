@@ -1,0 +1,234 @@
+version: 2
+
+models:
+- name: fct_review
+  description: This table contains detailed review information including customer, dates, locations, aircraft, and review metrics.
+  columns:
+  - name: review_id
+    description: Unique identifier for each review.
+    tests:
+    - unique
+    - not_null
+
+  - name: customer_id
+    description: Unique identifier for each customer.
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_customer')
+        field: customer_id
+
+  - name: date_submitted_id
+    description: Unique identifier for the date the review was submitted.
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_date')
+        field: date_id
+
+  - name: date_flown_id
+    description: Unique identifier for the date the flight was taken.
+    tests:
+    # - not_null
+    - relationships:
+        to: ref('dim_date')
+        field: date_id
+
+  - name: origin_location_id
+    description: Unique identifier for the origin location.
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_location')
+        field: location_id
+
+  - name: destination_location_id
+    description: Unique identifier for the destination location.
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_location')
+        field: location_id
+
+  - name: transit_location_id
+    description: Unique identifier for the transit location.
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_location')
+        field: location_id
+
+  - name: aircraft_id
+    description: Unique identifier for the aircraft.
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_aircraft')
+        field: aircraft_id
+
+  - name: verified
+    description: Indicates if the review is verified.
+    tests:
+    - accepted_values:
+        values: [ true, false ]
+
+  - name: seat_type
+    description: The type of seat in the review.
+    tests:
+    - accepted_values:
+        values: [ 'Premium Economy', 'Business Class', 'Economy Class', 'First Class' ]
+
+  - name: type_of_traveller
+    description: The type of traveller in the review.
+    tests:
+    - accepted_values:
+        values: [ 'Business', 'Couple Leisure', 'Family Leisure', 'Solo Leisure', null ]
+
+  - name: seat_comfort
+    description: Rating for seat comfort.
+
+  - name: cabin_staff_service
+    description: Rating for cabin staff service.
+
+  - name: food_and_beverages
+    description: Rating for food and beverages.
+
+  - name: inflight_entertainment
+    description: Rating for inflight entertainment.
+
+  - name: ground_service
+    description: Rating for ground service.
+
+  - name: wifi_and_connectivity
+    description: Rating for wifi and connectivity.
+
+  - name: value_for_money
+    description: Rating for value for money.
+
+  - name: recommended
+    description: Indicates if the reviewer recommends the airline.
+    tests:
+    - accepted_values:
+        values: [ true, false ]
+
+  - name: review_text
+    description: The text of the review.
+
+  contracts:
+    enabled: true
+
+- name: dim_location
+  description: This table contains distinct locations (city and airport) derived from the reviews.
+  columns:
+  - name: location_id
+    description: Unique identifier for each location.
+    tests:
+    - unique
+    - not_null
+  - name: city
+    description: The city of the location.
+    tests:
+    - not_null
+  - name: airport
+    description: The airport of the location.
+    tests:
+    - not_null
+  contracts:
+    enabled: true
+
+- name: dim_date
+  description: This table contains a date dimension starting from 2015-01-01.
+  columns:
+  - name: date_id
+    description: Surrogate key representing each calendar date.
+    tests:
+    - unique
+    - not_null
+
+  - name: day_of_week
+    description: Numeric day of the week (e.g., 1 = Monday).
+  - name: day_of_week_name
+    description: Name of the day of the week.
+  - name: cal_week_start_date
+    description: Start date of the calendar week (usually Monday).
+  - name: day_of_month
+    description: Day of the month.
+  - name: cal_month
+    description: Calendar month as integer (1-12).
+  - name: cal_mon_name
+    description: Full name of the calendar month.
+  - name: cal_mon_name_short
+    description: Abbreviated name of the calendar month.
+  - name: cal_quarter
+    description: Calendar quarter number.
+  - name: cal_quarter_name
+    description: Name of the calendar quarter (e.g., Q1).
+  - name: cal_year
+    description: Calendar year.
+  - name: is_weekend
+    description: Indicates if the date falls on a weekend.
+    tests:
+    - accepted_values:
+        values: [ true, false ]
+  - name: fin_year
+    description: Financial year associated with the date.
+  - name: fin_period
+    description: Financial period number.
+  - name: fin_quarter
+    description: Financial quarter number.
+  - name: fin_week
+    description: Financial week number.
+  - name: fin_period_name
+    description: Name of the financial period.
+  - name: fin_quarter_name
+    description: Name of the financial quarter.
+  - name: fin_week_name
+    description: Name of the financial week.
+  contracts:
+    enabled: true
+
+- name: dim_aircraft
+  description: This table contains distinct aircraft models and their details derived from the reviews.
+  columns:
+  - name: aircraft_id
+    description: Unique identifier for each aircraft.
+    tests:
+    - unique
+    - not_null
+
+  - name: aircraft_model
+    description: The model of the aircraft.
+    tests:
+    - not_null
+
+  - name: aircraft_manufacturer
+    description: The manufacturer of the aircraft.
+
+  - name: seat_capacity
+    description: The seating capacity of the aircraft.
+
+  contracts:
+    enabled: true
+
+- name: dim_customer
+  description: This table contains distinct customers derived from the reviews.
+  columns:
+  - name: customer_id
+    description: Unique identifier for each customer.
+    tests:
+    - unique
+    - not_null
+
+  - name: customer_name
+    description: The name of the customer.
+    tests:
+    - not_null
+
+  - name: nationality
+    description: The nationality of the customer.
+
+  - name: number_of_flights
+    description: The number of flights taken by the customer.
+
+  contracts:
+    enabled: true
