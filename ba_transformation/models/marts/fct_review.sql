@@ -2,7 +2,7 @@
 
 with source_data as (
     select * 
-    from {{ source('AIRLINEQUALITY', 'REVIEW') }}
+    from {{ ref("stg_airlinequality__reviews") }}
 ),
 
 base as (
