@@ -97,5 +97,6 @@ select
     wifi_and_connectivity,
     value_for_money,
     recommended,
-    review_text
+    review_text,
+    current_timestamp()::timestamp_ntz as updated_at
 from with_aircraft

@@ -162,6 +162,12 @@ models:
     description: The text of the review.
     datatypes: string
 
+  - name: updated_at
+    description: Timestamp indicating when the record was last updated.
+    datatypes: timestamp
+    tests:
+    - not_null
+
   contracts:
     enabled: true
 # -----------------------------------------------------------------------------------------------------
