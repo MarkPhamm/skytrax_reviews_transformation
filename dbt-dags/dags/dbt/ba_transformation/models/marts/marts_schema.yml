@@ -1,0 +1,322 @@
+version: 2
+
+models:
+- name: fct_review
+  description: This table contains detailed review information including customer, dates, locations, aircraft, and review metrics.
+  columns:
+  - name: review_id
+    description: Unique identifier for each review.
+    datatypes: integer
+    tests:
+    - unique
+    - not_null
+
+  - name: customer_id
+    description: Unique identifier for each customer.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_customer')
+        field: customer_id
+
+  - name: date_submitted_id
+    description: Unique identifier for the date the review was submitted.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_date')
+        field: date_id
+
+  - name: date_flown_id
+    description: Unique identifier for the date the flight was taken.
+    datatypes: integer
+    tests:
+    # - not_null
+    - relationships:
+        to: ref('dim_date')
+        field: date_id
+
+  - name: origin_location_id
+    description: Unique identifier for the origin location.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_location')
+        field: location_id
+
+  - name: destination_location_id
+    description: Unique identifier for the destination location.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_location')
+        field: location_id
+
+  - name: transit_location_id
+    description: Unique identifier for the transit location.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_location')
+        field: location_id
+
+  - name: aircraft_id
+    description: Unique identifier for the aircraft.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_aircraft')
+        field: aircraft_id
+
+  - name: verified
+    description: Indicates if the review is verified.
+    datatypes: boolean
+    tests:
+    - accepted_values:
+        values: [ true, false ]
+
+  - name: seat_type
+    description: The type of seat in the review.
+    datatypes: string
+    tests:
+    - accepted_values:
+        values: [ 'Premium Economy', 'Business Class', 'Economy Class', 'First Class' ]
+
+  - name: type_of_traveller
+    description: The type of traveller in the review.
+    datatypes: string
+    tests:
+    - accepted_values:
+        values: [ 'Business', 'Couple Leisure', 'Family Leisure', 'Solo Leisure', null ]
+
+  - name: seat_comfort
+    description: Rating for seat comfort.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: 1
+        max_value: 5
+
+  - name: cabin_staff_service
+    description: Rating for cabin staff service.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: 1
+        max_value: 5
+
+  - name: food_and_beverages
+    description: Rating for food and beverages.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: 1
+        max_value: 5
+
+  - name: inflight_entertainment
+    description: Rating for inflight entertainment.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: 1
+        max_value: 5
+
+  - name: ground_service
+    description: Rating for ground service.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: 1
+        max_value: 5
+
+  - name: wifi_and_connectivity
+    description: Rating for wifi and connectivity.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: 1
+        max_value: 5
+
+  - name: value_for_money
+    description: Rating for value for money.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between:
+        min_value: 1
+        max_value: 5
+
+  - name: recommended
+    description: Indicates if the reviewer recommends the airline.
+    datatypes: boolean
+    tests:
+    - accepted_values:
+        values: [ true, false ]
+
+  - name: review_text
+    description: The text of the review.
+    datatypes: string
+
+  - name: updated_at
+    description: Timestamp indicating when the record was last updated.
+    datatypes: timestamp
+    tests:
+    - not_null
+
+  contracts:
+    enabled: true
+# -----------------------------------------------------------------------------------------------------
+- name: dim_location
+  description: This table contains distinct locations (city and airport) derived from the reviews.
+  columns:
+  - name: location_id
+    description: Unique identifier for each location.
+    datatypes: integer
+    tests:
+    - unique
+    - not_null
+
+  - name: city
+    description: The city of the location.
+    datatypes: string
+    tests:
+    - not_null
+
+  - name: airport
+    description: The airport of the location.
+    datatypes: string
+    tests:
+    - not_null
+
+  contracts:
+    enabled: true
+
+# -----------------------------------------------------------------------------------------------------
+- name: dim_date
+  description: This table contains a date dimension starting from 2015-01-01.
+  columns:
+  - name: date_id
+    description: Surrogate key representing each calendar date.
+    datatypes: integer
+    tests:
+    - unique
+    - not_null
+  - name: day_of_week
+    description: Numeric day of the week (e.g., 1 = Monday).
+    datatypes: integer
+  - name: day_of_week_name
+    description: Name of the day of the week.
+    datatypes: string
+  - name: cal_week_start_date
+    description: Start date of the calendar week (usually Monday).
+    datatypes: date
+  - name: day_of_month
+    description: Day of the month.
+    datatypes: integer
+  - name: cal_month
+    description: Calendar month as integer (1-12).
+    datatypes: integer
+  - name: cal_mon_name
+    description: Full name of the calendar month.
+    datatypes: string
+  - name: cal_mon_name_short
+    description: Abbreviated name of the calendar month.
+    datatypes: string
+  - name: cal_quarter
+    description: Calendar quarter number.
+    datatypes: integer
+  - name: cal_quarter_name
+    description: Name of the calendar quarter (e.g., Q1).
+    datatypes: string
+  - name: cal_year
+    description: Calendar year.
+    datatypes: integer
+  - name: is_weekend
+    description: Indicates if the date falls on a weekend.
+    datatypes: boolean
+    tests:
+    - accepted_values:
+        values: [ true, false ]
+  - name: fin_year
+    description: Financial year associated with the date.
+    datatypes: integer
+  - name: fin_period
+    description: Financial period number.
+    datatypes: integer
+  - name: fin_quarter
+    description: Financial quarter number.
+    datatypes: integer
+  - name: fin_week
+    description: Financial week number.
+    datatypes: integer
+  - name: fin_period_name
+    description: Name of the financial period.
+    datatypes: string
+  - name: fin_quarter_name
+    description: Name of the financial quarter.
+    datatypes: string
+  - name: fin_week_name
+    description: Name of the financial week.
+    datatypes: string
+  contracts:
+    enabled: true
+# -----------------------------------------------------------------------------------------------------
+- name: dim_aircraft
+  description: This table contains distinct aircraft models and their details derived from the reviews.
+  columns:
+  - name: aircraft_id
+    description: Unique identifier for each aircraft.
+    datatypes: integer
+    tests:
+    - unique
+    - not_null
+
+  - name: aircraft_model
+    description: The model of the aircraft.
+    datatypes: string
+    tests:
+    - not_null
+
+  - name: aircraft_manufacturer
+    description: The manufacturer of the aircraft.
+    datatypes: string
+
+  - name: seat_capacity
+    description: The seating capacity of the aircraft.
+    datatypes: integer
+
+  contracts:
+    enabled: true
+
+# -----------------------------------------------------------------------------------------------------
+- name: dim_customer
+  description: This table contains distinct customers derived from the reviews.
+  columns:
+  - name: customer_id
+    description: Unique identifier for each customer.
+    datatypes: integer
+    tests:
+    - unique
+    - not_null
+
+  - name: customer_name
+    description: The name of the customer.
+    datatypes: string
+    tests:
+    - not_null
+
+  - name: nationality
+    description: The nationality of the customer.
+    datatypes: string
+
+  - name: number_of_flights
+    description: The number of flights taken by the customer.
+    datatypes: integer
+
+  contracts:
+    enabled: true
