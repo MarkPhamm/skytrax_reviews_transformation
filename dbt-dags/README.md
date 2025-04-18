@@ -37,11 +37,16 @@ Note: Running 'astro dev start' will start your project with the Airflow Webserv
 
 You should also be able to access your Postgres Database at 'localhost:5432/postgres'.
 
+4. If the DAG is deactivated, run 
+
+```bash
+airflow dags reserialize && airflow dags unpause dbt_transformation
+```
+
 Deploy Your Project to Astronomer
 =================================
 
 If you have an Astronomer account, pushing code to a Deployment on Astronomer is simple. For deploying instructions, refer to Astronomer documentation: https://www.astronomer.io/docs/astro/deploy-code/
-
 Contact
 =======
 
