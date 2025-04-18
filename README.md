@@ -1,4 +1,117 @@
-# British Airways `dbt-airflow` Transformation Pipelines
+# British Airways Data Transformation Project
+
+This project implements a modern data transformation pipeline for British Airways, designed to process and model customer review data from [Airline Quality](https://www.airlinequality.com/airline-reviews/british-airways/). It leverages **dbt**, **Snowflake**, and **Apache Airflow**, orchestrated via **Astronomer**, to create a scalable, production-ready analytics workflow.
+
+---
+
+## 🗂 Project Structure
+
+```
+.
+├── data/                 # Raw and processed data files
+├── data_model/           # Data model diagrams and definitions
+│   ├── schema.jpeg       # Visual data model
+│   └── schema.txt        # Text-based schema description
+├── dbt-dags/             # dbt models and Airflow DAGs
+│   ├── dags/             # DAG definitions
+│   ├── tests/            # Data quality tests
+│   └── .astro/           # Astronomer CLI configuration
+├── notebooks/            # Jupyter notebooks for Snowflake analysis
+│   ├── snowflake_connection.ipynb
+│   └── snowflake_connection.py
+└── requirements.txt      # Python package requirements
+```
+
+---
+
+## ⚙️ Technology Stack
+![BritishAirways (1)](https://github.com/user-attachments/assets/b903da11-27ae-412d-ad2e-3067e8f7aa04)
+
+- **Data Source**: [British Airways Reviews on AirlineQuality](https://www.airlinequality.com/airline-reviews/british-airways/)
+- **Programming Language**: Python 3.12.5  
+- **Data Warehouse**: Snowflake  
+- **Transformation Tool**: dbt
+- **Orchestration**: Apache Airflow powered by [Astronomer](https://www.astronomer.io/)  
+
+---
+
+## 🧱 Data Architecture
+
+### 1. Data Source
+Customer reviews are scraped from [AirlineQuality.com](https://www.airlinequality.com/airline-reviews/british-airways/), capturing structured and unstructured data elements including:
+
+- **Flight Route** (e.g., *Singapore to Sydney*)  
+- **Aircraft Type** (e.g., *Boeing 777*)
+- **Seat Type** (e.g., *Business Class*)  
+- **Type of Traveller** (e.g., *Solo Leisure*)  
+- **Date Flown** (e.g., *March 2025*) 
+- **Star Ratings** (Seat Comfort, Cabin Staff, Food & Beverages, Entertainment, Ground Service, Value for Money)  
+- **Review Text** and **Submission Date**  
+- **Verification Flag** (Trip Verified)  
+- **Reviewer Info** (Name, Country, Number of Reviews)
+--- 
+
+### 2. Data Model
+
+#### Dimension Tables
+- `dim_customer`: Identity, loyalty, and flight history  
+- `dim_aircraft`: Manufacturer, model, and seating layout  
+- `dim_location`: Airports, cities, and time zones  
+- `dim_date`: Calendar and fiscal date tracking  
+
+#### Fact Table
+- `fct_review`: One row per customer review per flight  
+  - Includes metrics (ratings), booleans (verified, recommended), and categorical fields (seat type, travel type)
+
+### 3. Data Flow
+- **Source Layer**: Web scraping + staging  
+- **Transformation Layer**: dbt modeling + business logic  
+- **Orchestration Layer**: DAG scheduling and task dependency management via **Astronomer**  
+- **Presentation Layer**: Clean fact/dim tables for BI/reporting
+
+### 4. Data Quality Framework
+- Null checks  
+- Foreign key validation  
+- Freshness and completeness monitoring  
+- dbt tests for schema integrity and logic rules  
+
+---
+
+## 🧩 Project Components
+
+### 📊 Data Model
+
+Located in `data_model/`:
+- `schema.jpeg`: visual schema overview  
+- `schema.txt`: detailed textual schema
+
+### 🛠 dbt + Airflow with Astronomer
+
+Located in `dbt-dags/`:
+- dbt model definitions and tests  
+- Airflow DAGs orchestrated via **Astro CLI**
+- Modular structure for local development and deployment to Astronomer Cloud or Docker environments
+
+### 📈 Analysis & Validation
+
+Notebook resources in `notebooks/` for:
+- Establishing a connection to Snowflake  
+- Running exploratory queries  
+- Testing pipeline output  
+
+---
+
+## 📦 Key Dependencies
+
+- `dbt-snowflake==1.9.2`  
+- `pandas==2.2.3`  
+- `snowflake-sqlalchemy==1.7.3`  
+- Managed via `requirements.txt`
+
+---
+
+## 🌐 Data Modeling Approach
+Let me know if you'd like a diagram for the Airflow DAG flow or a `README.md` version with clickable section links and badges.
 
 ## Data Model Overview
 
@@ -36,7 +149,7 @@ These facts represent real customer input and form the foundation for performanc
 
 ---
 
-## Star Schema Implementation
+## ⭐ Star Schema Overview
 
 This model follows a classic **star schema** structure where the `fct_review` table sits at the center and joins to dimension tables via foreign keys:
 
@@ -47,4 +160,7 @@ This model follows a classic **star schema** structure where the `fct_review` ta
 | `origin_location_id`, `destination_location_id`, `transit_location_id` | `dim_location` | Connects review to flight locations |
 | `aircraft_id`                    | `dim_aircraft`        | Captures aircraft-related context |
 
-This schema supports efficient slicing, filtering, and aggregation of reviews by date, location, customer, and aircraft, enabling detailed insights across British Airways’ customer experience.
+![schema](https://github.com/user-attachments/assets/f6276b06-9f03-410a-b2cc-785b0a23b8f2)
+
+This schema supports efficient slicing, filtering, and aggregating reviews by date, location, customer, and aircraft, enabling detailed insights across British Airways’ customer experience.
+
