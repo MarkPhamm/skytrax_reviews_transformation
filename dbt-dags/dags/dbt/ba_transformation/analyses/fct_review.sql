@@ -2,7 +2,7 @@
 
 with source_data as (
     select * 
-    from {{ source('AIRLINEQUALITY', 'REVIEW') }}
+    from {{ ref("stg_airlinequality__reviews") }}
 ),
 
 base as (
@@ -30,7 +30,9 @@ base as (
         wifi_and_connectivity,
         value_for_money,
         recommended,
-        review as review_text
+        review as review_text,
+        convert_timezone('America/Los_Angeles', 'America/Chicago', updated_at)::timestamp_ntz as el_updated_at,
+        convert_timezone('America/Los_Angeles', 'America/Chicago', current_timestamp())::timestamp_ntz as t_updated_at
     from source_data
 ),
 
@@ -97,5 +99,7 @@ select
     wifi_and_connectivity,
     value_for_money,
     recommended,
-    review_text
+    review_text,
+    el_updated_at,
+    t_updated_at
 from with_aircraft
