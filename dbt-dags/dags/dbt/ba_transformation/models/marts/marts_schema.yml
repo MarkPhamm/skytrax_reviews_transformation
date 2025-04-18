@@ -162,8 +162,14 @@ models:
     description: The text of the review.
     datatypes: string
 
-  - name: updated_at
-    description: Timestamp indicating when the record was last updated.
+  - name: el_updated_at
+    description: Timestamp indicating when the record was last updated from the EL pipeline
+    datatypes: timestamp
+    tests:
+    - not_null
+
+  - name: t_updated_at
+    description: Timestamp indicating when the record was last updated from the Transformation pipeline
     datatypes: timestamp
     tests:
     - not_null

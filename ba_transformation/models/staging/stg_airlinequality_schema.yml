@@ -37,3 +37,5 @@ models:
     description: The rating given by the customer for the flight.
   - name: comments
     description: Additional comments provided by the customer.
+  - name: updated_at
+    description: el_pipline updated at
