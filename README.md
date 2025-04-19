@@ -1,4 +1,4 @@
-# British Airways Data Transformation Project
+# British Airways Data Transformation
 
 This project implements a modern data transformation pipeline for British Airways, designed to process and model customer review data from [Airline Quality](https://www.airlinequality.com/airline-reviews/british-airways/). It leverages **dbt**, **Snowflake**, and **Apache Airflow**, orchestrated via **Astronomer**, to create a scalable, production-ready workflow.
 
