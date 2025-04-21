@@ -41,10 +41,6 @@ jobs:
       working-directory: ./ba_transformation
       run: dbt deps
 
-    - name: Run dbt test
+    - name: Run dbt build
       working-directory: ./ba_transformation
-      run: dbt test --profiles-dir ./
-
-    - name: dbt run
-      working-directory: ./ba_transformation
-      run: dbt run --profiles-dir ./
+      run: dbt build --profiles-dir ./
