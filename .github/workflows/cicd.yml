@@ -1,11 +1,13 @@
-name: dbt CI
+name: British Airways Transformation Job
 
 on:
   push:
     branches:
+    - main
     - github_action_intergration
   pull_request:
     branches:
+    - main
     - github_action_intergration
   schedule:
   - cron: '0 8 * * 1' # Every Monday at 8AM UTC
@@ -38,10 +40,6 @@ jobs:
     - name: Install dbt dependencies
       working-directory: ./ba_transformation
       run: dbt deps
-
-    # - name: Run lint check
-    #   working-directory: ./ba_transformation
-    #   run: sqlfluff lint models --dialect snowflake
 
     - name: Run dbt test
       working-directory: ./ba_transformation
