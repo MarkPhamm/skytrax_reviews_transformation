@@ -1,0 +1,52 @@
+name: dbt CI
+
+on:
+  push:
+    branches:
+    - github_action_intergration
+  pull_request:
+    branches:
+    - github_action_intergration
+  schedule:
+  - cron: '0 8 * * 1' # Every Monday at 8AM UTC
+  workflow_dispatch:
+
+
+env:
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+  SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+  SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+
+jobs:
+  dbt_ci:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Install requirements
+      run: pip install -r requirements.txt
+
+    - name: Install dbt dependencies
+      working-directory: ./ba_transformation
+      run: dbt deps
+
+    - name: Run lint check
+      working-directory: ./ba_transformation
+      run: sqlfluff lint models --dialect snowflake
+
+    - name: Run dbt test
+      working-directory: ./ba_transformation
+      run: dbt test --profiles-dir ./
+
+    - name: dbt run
+      working-directory: ./ba_transformation
+      run: dbt run --profiles-dir ./
