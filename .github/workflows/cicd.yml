@@ -10,7 +10,7 @@ on:
     - main
     - github_action_intergration
   schedule:
-  - cron: '0 8 * * 1' # Every Monday at 8AM UTC
+  - cron: '0 8 * * *' # Every day at 8AM UTC
   workflow_dispatch:
 
 
@@ -22,7 +22,7 @@ env:
   SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
 
 jobs:
-  dbt_ci:
+  ba_transformation:
     runs-on: ubuntu-latest
 
     steps:
