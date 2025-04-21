@@ -174,4 +174,3 @@ cython_debug/
 /configuration.env
 /.cursor
 /.vscode
-ba_transformation/
