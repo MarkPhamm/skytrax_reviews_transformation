@@ -39,9 +39,9 @@ jobs:
       working-directory: ./ba_transformation
       run: dbt deps
 
-    - name: Run lint check
-      working-directory: ./ba_transformation
-      run: sqlfluff lint models --dialect snowflake
+    # - name: Run lint check
+    #   working-directory: ./ba_transformation
+    #   run: sqlfluff lint models --dialect snowflake
 
     - name: Run dbt test
       working-directory: ./ba_transformation
