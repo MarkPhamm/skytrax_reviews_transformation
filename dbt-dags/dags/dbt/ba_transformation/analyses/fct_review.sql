@@ -31,8 +31,8 @@ base as (
         value_for_money,
         recommended,
         review as review_text,
-        convert_timezone('America/Los_Angeles', 'America/Chicago', updated_at)::timestamp_ntz as el_updated_at,
-        convert_timezone('America/Los_Angeles', 'America/Chicago', current_timestamp())::timestamp_ntz as t_updated_at
+        convert_timezone('America/Los_Angeles', 'UTC', updated_at)::timestamp_ntz as el_updated_at,
+        convert_timezone('America/Los_Angeles', 'UTC', current_timestamp())::timestamp_ntz as t_updated_at
     from source_data
 ),
 
