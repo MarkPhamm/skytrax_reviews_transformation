@@ -56,16 +56,16 @@ jobs:
         to: minh.b.pham@tcu.edu
         from: ${{ secrets.EMAIL_USERNAME }}
         body: |
-          ✈️ **British Airways Transformation Job Report** ✈️
+          ✈️ British Airways Transformation Job Report ✈️
 
-          The workflow has **completed**.
+          The workflow has completed.
 
-          📅 **Run Time:** ${{ github.run_started_at }}
-          🔄 **Triggered by:** ${{ github.event_name }}
-          ✅ **Status:** ${{ job.status }}
+          📅 Run Time: ${{ github.run_started_at }}
+          🔄 Triggered by: ${{ github.event_name }}
+          ✅ Status: ${{ job.status }}
 
-          📂 **Repository:** ${{ github.repository }}
-          🔗 **Workflow Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          📂 Repository: ${{ github.repository }}
+          🔗 Workflow Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
           Cheers,  
           GitHub Actions 🤖
