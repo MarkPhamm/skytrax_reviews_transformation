@@ -8,7 +8,6 @@ on:
   pull_request:
     branches:
     - main
-    - emails_intergration
   schedule:
   - cron: '0 0 * * *' # Every day at 00:00 UTC
   workflow_dispatch:
@@ -57,5 +56,16 @@ jobs:
         to: minh.b.pham@tcu.edu
         from: ${{ secrets.EMAIL_USERNAME }}
         body: |
-          The GitHub Actions workflow 'British Airways Transformation Job' has completed.
-          Status: ${{ job.status }}
+          ✈️ **British Airways Transformation Job Report** ✈️
+
+          The workflow has **completed**.
+
+          📅 **Run Time:** ${{ github.run_started_at }}
+          🔄 **Triggered by:** ${{ github.event_name }}
+          ✅ **Status:** ${{ job.status }}
+
+          📂 **Repository:** ${{ github.repository }}
+          🔗 **Workflow Run:** https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Cheers,  
+          GitHub Actions 🤖
