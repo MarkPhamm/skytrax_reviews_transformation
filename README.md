@@ -112,6 +112,35 @@ Notebook resources in `notebooks/` for:
 
 ---
 
+## 🔄 CI/CD Pipeline
+
+This project uses GitHub Actions for automated data transformation pipeline:
+
+### Workflow Triggers
+- **Push**: Triggers on pushes to `main` branch
+- **Pull Request**: Runs on PRs to `main` branch
+- **Schedule**: Executes daily at 00:00 UTC
+- **Manual**: Can be triggered via workflow_dispatch
+
+### Pipeline Steps
+1. **Environment Setup**
+   - Python 3.12 setup
+   - Dependencies installation
+   - dbt package installation
+
+2. **Data Transformation**
+   - Runs dbt build process
+   - Uses Snowflake credentials from secrets
+
+3. **Notifications**
+   - Sends email notifications on completion
+   - Includes run time, trigger info, and status
+
+### Workflow Status
+[![BA Transformation](https://github.com/MarkPhamm/british-airways-transformation/actions/workflows/cicd.yml/badge.svg)](https://github.com/MarkPhamm/british-airways-transformation/actions/workflows/cicd.yml)
+
+---
+
 ## 🌐 Data Modeling Approach
 Let me know if you'd like a diagram for the Airflow DAG flow or a `README.md` version with clickable section links and badges.
 
