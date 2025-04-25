@@ -177,6 +177,186 @@ models:
   contracts:
     enabled: true
 # -----------------------------------------------------------------------------------------------------
+- name: fct_review_enriched
+  description: |
+    Enriched review fact table. Adds the calculated average rating across the
+    seven sub-rating metrics and a categorical rating band. All other columns
+    are identical to fct_review.
+  columns:
+  # --- keys and foreign-keys (unchanged) ---
+  - name: review_id
+    description: Unique identifier for each review.
+    datatypes: integer
+    tests: [ unique, not_null ]
+
+  - name: customer_id
+    description: Unique identifier for each customer.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_customer')
+        field: customer_id
+
+  - name: date_submitted_id
+    description: Unique identifier for the date the review was submitted.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_date')
+        field: date_id
+
+  - name: date_flown_id
+    description: Unique identifier for the date the flight was taken.
+    datatypes: integer
+    tests:
+    - relationships:
+        to: ref('dim_date')
+        field: date_id
+
+  - name: origin_location_id
+    description: Unique identifier for the origin location.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_location')
+        field: location_id
+
+  - name: destination_location_id
+    description: Unique identifier for the destination location.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_location')
+        field: location_id
+
+  - name: transit_location_id
+    description: Unique identifier for the transit location.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_location')
+        field: location_id
+
+  - name: aircraft_id
+    description: Unique identifier for the aircraft.
+    datatypes: integer
+    tests:
+    - not_null
+    - relationships:
+        to: ref('dim_aircraft')
+        field: aircraft_id
+
+  # --- attributes (unchanged) ---
+  - name: verified
+    description: Indicates if the review is verified.
+    datatypes: boolean
+    tests:
+    - accepted_values: { values: [ true, false ] }
+
+  - name: seat_type
+    description: The type of seat in the review.
+    datatypes: string
+    tests:
+    - accepted_values:
+        values: [ 'Premium Economy', 'Business Class', 'Economy Class', 'First Class' ]
+
+  - name: type_of_traveller
+    description: The type of traveller in the review.
+    datatypes: string
+    tests:
+    - accepted_values:
+        values: [ 'Business', 'Couple Leisure', 'Family Leisure', 'Solo Leisure', null ]
+
+  # --- sub-ratings (unchanged) ---
+  - name: seat_comfort
+    description: Rating for seat comfort.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+
+  - name: cabin_staff_service
+    description: Rating for cabin staff service.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+
+  - name: food_and_beverages
+    description: Rating for food and beverages.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+
+  - name: inflight_entertainment
+    description: Rating for inflight entertainment.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+
+  - name: ground_service
+    description: Rating for ground service.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+
+  - name: wifi_and_connectivity
+    description: Rating for wifi and connectivity.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+
+  - name: value_for_money
+    description: Rating for value for money.
+    datatypes: integer
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+
+  - name: recommended
+    description: Indicates if the reviewer recommends the airline.
+    datatypes: boolean
+    tests:
+    - accepted_values: { values: [ true, false ] }
+
+  # --- new calculated columns ---
+  - name: average_rating
+    description: >
+      Mean of the seven sub-ratings, computed across non-null values. Range 0–5; null if all sub-ratings are null. Round to 2 decimals
+    datatypes: numeric
+    tests:
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 0, max_value: 5 }
+
+  - name: rating_band
+    description: >
+      Categorical band derived from average_rating: 0–<2 → bad, 2–<4 → medium, 4–5 → good. 'Unknown' if average_rating is null.
+    datatypes: string
+    tests:
+    - not_null
+    - accepted_values:
+        values: [ 'bad', 'medium', 'good', 'Unknown' ]
+  # --- end of new metrics ------
+
+  - name: review_text
+    description: The text of the review.
+    datatypes: string
+
+  # --- timestamps (unchanged, kept last) ---
+  - name: el_updated_at
+    description: Timestamp indicating when the record was last updated from the EL pipeline.
+    datatypes: timestamp
+    tests: [ not_null ]
+
+  - name: t_updated_at
+    description: Timestamp indicating when the record was last updated from the Transformation pipeline.
+    datatypes: timestamp
+    tests: [ not_null ]
+
+  contracts:
+    enabled: true
+# -----------------------------------------------------------------------------------------------------
 - name: dim_location
   description: This table contains distinct locations (city and airport) derived from the reviews.
   columns:
