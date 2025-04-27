@@ -42,6 +42,10 @@ jobs:
     - name: Install dbt dependencies
       working-directory: ./ba_transformation
       run: dbt deps
+    
+    - name: Testing connection
+      working-directory: ./ba_transformation
+      run: dbt debug
 
     - name: Run dbt build
       working-directory: ./ba_transformation
