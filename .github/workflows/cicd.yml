@@ -24,55 +24,63 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Get current timestamp
-      id: timestamp
-      run: echo "time=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+      # 0️⃣ Get current timestamp for reporting in the notification email
+      - name: Get current timestamp
+        id: timestamp
+        run: echo "time=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
 
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      # 1️⃣ Checkout the repository code
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
+      # 2️⃣ Set up Python 3.12 for the environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
 
-    - name: Install requirements
-      run: pip install -r requirements.txt
+      # 3️⃣ Install Python dependencies from requirements.txt
+      - name: Install requirements
+        run: pip install -r requirements.txt
 
-    - name: Install dbt dependencies
-      working-directory: ./ba_transformation
-      run: dbt deps
-    
-    - name: Testing connection
-      working-directory: ./ba_transformation
-      run: dbt debug
+      # 4️⃣ Install dbt dependencies defined in packages.yml
+      - name: Install dbt dependencies
+        working-directory: ./ba_transformation
+        run: dbt deps
 
-    - name: Run dbt build
-      working-directory: ./ba_transformation
-      run: dbt build --profiles-dir ./
+      # 5️⃣ Test dbt connection to Snowflake (or target warehouse) using dbt debug
+      - name: Testing connection
+        working-directory: ./ba_transformation
+        run: dbt debug
 
-    - name: Send email notification
-      if: always()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: smtp.gmail.com
-        server_port: 465
-        username: ${{ secrets.EMAIL_USERNAME }}
-        password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: "British Airways Transformation Job - ${{ job.status }}"
-        to: minh.b.pham@tcu.edu
-        from: ${{ secrets.EMAIL_USERNAME }}
-        body: |
-          ✈️ British Airways Transformation Job Report ✈️
+      # 6️⃣ Run dbt build to execute all models, tests, and snapshots
+      - name: Run dbt build
+        working-directory: ./ba_transformation
+        run: dbt build --profiles-dir ./
 
-          The workflow has completed.
+      # 7️⃣ Send an email notification about the workflow status (always runs)
+      - name: Send email notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "British Airways Transformation Job - ${{ job.status }}"
+          to: minh.b.pham@tcu.edu
+          from: ${{ secrets.EMAIL_USERNAME }}
+          body: |
+            ✈️ British Airways Transformation Job Report ✈️
 
-          📅 Run Time: ${{ steps.timestamp.outputs.time }}
-          🔄 Triggered by: ${{ github.event_name }}
-          ✅ Status: ${{ job.status }}
+            The workflow has completed.
 
-          📂 Repository: ${{ github.repository }}
-          🔗 Workflow Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            📅 Run Time: ${{ steps.timestamp.outputs.time }}
+            🔄 Triggered by: ${{ github.event_name }}
+            ✅ Status: ${{ job.status }}
 
-          Cheers,  
-          GitHub Actions 🤖
+            📂 Repository: ${{ github.repository }}
+            🔗 Workflow Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Cheers,  
+            GitHub Actions 🤖
