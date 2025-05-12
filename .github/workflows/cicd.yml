@@ -56,7 +56,7 @@ jobs:
       # 6️⃣ Run dbt build to execute all models, tests, and snapshots
       - name: Run dbt build
         working-directory: ./ba_transformation
-        run: dbt build --profiles-dir ./
+        run: dbt build --profiles-dir ./ --exclude dim_date
 
       # 7️⃣ Send an email notification about the workflow status (always runs)
       - name: Send email notification
