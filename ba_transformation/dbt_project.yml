@@ -34,11 +34,17 @@ models:
     staging:
       +materialized: view
       +schema: STAGING
+      +enabled: true
+      +tags: ['staging']
     marts:
       +materialized: table
       +schema: MARTS
+      +enabled: true
+      +tags: ['marts']
 
-# seeds:
-#   ba_transformation:
-#     reviews:
-#       schema: RAW
+seeds:
+  ba_transformation:
+    review:
+      schema: RAW
+      +enabled: true
+      +tags: ['seeds']
