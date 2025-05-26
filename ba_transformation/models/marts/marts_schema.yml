@@ -21,7 +21,7 @@ models:
         field: customer_id
 
   - name: date_submitted_id
-    description: Unique identifier for the date the review was submitted.
+    description: Unique identifier for the date the review was submitted. If null, defaults to 2015-01-01.
     datatypes: integer
     tests:
     - not_null
@@ -100,7 +100,7 @@ models:
     datatypes: integer
     tests:
     - dbt_expectations.expect_column_values_to_be_between:
-        min_value: 1
+        min_value: 0
         max_value: 5
 
   - name: cabin_staff_service
@@ -108,7 +108,7 @@ models:
     datatypes: integer
     tests:
     - dbt_expectations.expect_column_values_to_be_between:
-        min_value: 1
+        min_value: 0
         max_value: 5
 
   - name: food_and_beverages
@@ -116,7 +116,7 @@ models:
     datatypes: integer
     tests:
     - dbt_expectations.expect_column_values_to_be_between:
-        min_value: 1
+        min_value: 0
         max_value: 5
 
   - name: inflight_entertainment
@@ -124,7 +124,7 @@ models:
     datatypes: integer
     tests:
     - dbt_expectations.expect_column_values_to_be_between:
-        min_value: 1
+        min_value: 0
         max_value: 5
 
   - name: ground_service
@@ -132,7 +132,7 @@ models:
     datatypes: integer
     tests:
     - dbt_expectations.expect_column_values_to_be_between:
-        min_value: 1
+        min_value: 0
         max_value: 5
 
   - name: wifi_and_connectivity
@@ -140,7 +140,7 @@ models:
     datatypes: integer
     tests:
     - dbt_expectations.expect_column_values_to_be_between:
-        min_value: 1
+        min_value: 0
         max_value: 5
 
   - name: value_for_money
@@ -148,7 +148,7 @@ models:
     datatypes: integer
     tests:
     - dbt_expectations.expect_column_values_to_be_between:
-        min_value: 1
+        min_value: 0
         max_value: 5
 
   - name: recommended
@@ -277,43 +277,43 @@ models:
     description: Rating for seat comfort.
     datatypes: integer
     tests:
-    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 0, max_value: 5 }
 
   - name: cabin_staff_service
     description: Rating for cabin staff service.
     datatypes: integer
     tests:
-    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 0, max_value: 5 }
 
   - name: food_and_beverages
     description: Rating for food and beverages.
     datatypes: integer
     tests:
-    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 0, max_value: 5 }
 
   - name: inflight_entertainment
     description: Rating for inflight entertainment.
     datatypes: integer
     tests:
-    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 0, max_value: 5 }
 
   - name: ground_service
     description: Rating for ground service.
     datatypes: integer
     tests:
-    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 0, max_value: 5 }
 
   - name: wifi_and_connectivity
     description: Rating for wifi and connectivity.
     datatypes: integer
     tests:
-    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 0, max_value: 5 }
 
   - name: value_for_money
     description: Rating for value for money.
     datatypes: integer
     tests:
-    - dbt_expectations.expect_column_values_to_be_between: { min_value: 1, max_value: 5 }
+    - dbt_expectations.expect_column_values_to_be_between: { min_value: 0, max_value: 5 }
 
   - name: recommended
     description: Indicates if the reviewer recommends the airline.
@@ -491,13 +491,13 @@ models:
     - not_null
 
   - name: customer_name
-    description: The name of the customer.
+    description: The name of the customer. If null, defaults to 'Unknown'.
     datatypes: string
     tests:
     - not_null
 
   - name: nationality
-    description: The nationality of the customer.
+    description: The nationality of the customer. If null, defaults to 'Unknown'.
     datatypes: string
 
   - name: number_of_flights

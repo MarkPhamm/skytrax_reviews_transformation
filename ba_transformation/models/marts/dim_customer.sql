@@ -6,7 +6,7 @@ customer_agg as (
     select
         
         customer_name, 
-        nationality,
+        coalesce(nationality, 'Unknown') as nationality,
         count(*) number_of_flights
 
     from review

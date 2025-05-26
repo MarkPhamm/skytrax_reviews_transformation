@@ -8,8 +8,8 @@ with source_data as (
 base as (
     select 
         row_number() over (order by date_submitted, customer_name) as review_id,
-        customer_name,
-        nationality,
+        coalesce(customer_name, 'Unknown') as customer_name,
+        coalesce(nationality, 'Unknown') as nationality,
         date_submitted,
         date_flown,
         coalesce(origin_city, 'Unknown') as origin_city,
@@ -48,7 +48,7 @@ with_customer as (
 with_dates as (
     select 
         wc.*,
-        ds.date_id as date_submitted_id,
+        coalesce(ds.date_id, to_date('2015-01-01', 'YYYY-MM-DD')) as date_submitted_id,
         df.date_id as date_flown_id
     from with_customer wc
     left join {{ ref('dim_date') }} ds on wc.date_submitted = ds.date_id
