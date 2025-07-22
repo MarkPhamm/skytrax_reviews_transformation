@@ -27,7 +27,7 @@ This project implements a modern data transformation pipeline for British Airway
 ---
 
 ## ⚙️ Technology Stack
-![BritishAirways (1)](https://github.com/user-attachments/assets/b903da11-27ae-412d-ad2e-3067e8f7aa04)
+<img width="1560" height="540" alt="image" src="https://github.com/user-attachments/assets/57dc62cb-46b2-4586-b1f6-5225ab8ca2af" />
 
 - **Data Source**: [British Airways Reviews on AirlineQuality](https://www.airlinequality.com/airline-reviews/british-airways/)
 - **Programming Language**: Python 3.12.5  
