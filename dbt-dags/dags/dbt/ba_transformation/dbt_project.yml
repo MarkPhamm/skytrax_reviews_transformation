@@ -40,5 +40,4 @@ models:
 
 seeds:
   ba_transformation:
-    reviews:
-      schema: RAW
+    +schema: RAW

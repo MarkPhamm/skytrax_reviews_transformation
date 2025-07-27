@@ -6,14 +6,20 @@ from cosmos.profiles import SnowflakeUserPasswordProfileMapping
 
 
 profile_config = ProfileConfig(
-    profile_name="default",
+    profile_name="ba_transformation",
     target_name="dev",
     profile_mapping=SnowflakeUserPasswordProfileMapping(
-        conn_id="snowflake_conn", 
+        conn_id="snowflake_default",
+        profile_args={
+            "database": "BRITISH_AIRWAYS_DB",
+            "schema": "MARTS",
+            "warehouse": "COMPUTE_WH",
+            "role": "ACCOUNTADMIN"  # Adjust this to your actual role
+        }
     )
 )
 
-dbt_snowflake_dag = DbtDag(
+dbt_transformation_dag = DbtDag(
     project_config=ProjectConfig("/usr/local/airflow/dags/dbt/ba_transformation"),
     operator_args={"install_deps": True},
     profile_config=profile_config,
@@ -22,6 +28,6 @@ dbt_snowflake_dag = DbtDag(
     start_date=datetime(2023, 9, 10),
     catchup=False,
     dag_id="dbt_transformation",
+    # Exclude one-time run models from regular scheduled runs
+    select=["tag:!one_time_run"],
 )
-
-dag = dbt_snowflake_dag
