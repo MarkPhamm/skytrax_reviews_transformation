@@ -1,4 +1,4 @@
-FROM quay.io/astronomer/astro-runtime:12.8.0
+FROM astrocrpublic.azurecr.io/runtime:3.0-5
 
 # Increase timeout to avoid DagBag import failure
 ENV AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT=300
