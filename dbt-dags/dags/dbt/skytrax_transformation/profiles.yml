@@ -1,0 +1,11 @@
+ba_transformation:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      database: SKYTRAX_REVIEWS_DB
+      schema: MARTS
+      threads: 10
+      warehouse: COMPUTE_WH
+      client_session_keep_alive: False
+      query_tag: airflow_cosmos_query

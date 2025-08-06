@@ -11,7 +11,7 @@ profile_config = ProfileConfig(
     profile_mapping=SnowflakeUserPasswordProfileMapping(
         conn_id="snowflake_default",
         profile_args={
-            "database": "BRITISH_AIRWAYS_DB",
+            "database": "SKYTRAX_REVIEWS_DB",
             "schema": "MARTS",
             "warehouse": "COMPUTE_WH",
             "role": "ACCOUNTADMIN"  # Adjust this to your actual role
@@ -20,7 +20,7 @@ profile_config = ProfileConfig(
 )
 
 dbt_transformation_dag = DbtDag(
-    project_config=ProjectConfig("/usr/local/airflow/dags/dbt/ba_transformation"),
+    project_config=ProjectConfig("/usr/local/airflow/dags/dbt/skytrax_transformation"),
     operator_args={
         "install_deps": True,
         "select": "tag:!one_time_run"  # Exclude one-time run models from regular scheduled runs
@@ -28,7 +28,7 @@ dbt_transformation_dag = DbtDag(
     profile_config=profile_config,
     execution_config=ExecutionConfig(dbt_executable_path=f"{os.environ['AIRFLOW_HOME']}/dbt_venv/bin/dbt",),
     schedule="0 19 * * 2",  # Run at 2pm CST (19:00 UTC) on Tuesday
-    start_date=datetime(2023, 9, 10),
+    start_date=datetime(2025, 8, 1),
     catchup=False,
-    dag_id="dbt_transformation",
+    dag_id="dbt_skytrax_transformation",
 )
