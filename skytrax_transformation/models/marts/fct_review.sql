@@ -49,7 +49,7 @@ with_customer as (
 with_dates as (
     select 
         wc.*,
-        coalesce(ds.date_id, to_date('2015-01-01', 'YYYY-MM-DD')) as date_submitted_id,
+        ds.date_id as date_submitted_id,
         df.date_id as date_flown_id
     from with_customer wc
     left join {{ ref('dim_date') }} ds on wc.date_submitted = ds.date_id

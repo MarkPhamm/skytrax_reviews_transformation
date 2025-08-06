@@ -8,10 +8,11 @@ with source_data as (
 base as (
     select 
         row_number() over (order by date_submitted, customer_name) as review_id,
-        customer_name,
-        nationality,
+        coalesce(customer_name, 'Unknown') as customer_name,
+        coalesce(nationality, 'Unknown') as nationality,
         date_submitted,
         date_flown,
+        airline_name as airline,
         coalesce(origin_city, 'Unknown') as origin_city,
         coalesce(origin_airport, 'Unknown') as origin_airport,
         coalesce(destination_city, 'Unknown') as destination_city,
@@ -88,6 +89,7 @@ select
     destination_location_id,
     transit_location_id,
     aircraft_id,
+    airline,
     verified,
     seat_type,
     type_of_traveller,

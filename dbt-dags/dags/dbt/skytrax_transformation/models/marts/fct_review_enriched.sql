@@ -47,6 +47,7 @@ select
     destination_location_id,
     transit_location_id,
     aircraft_id,
+    airline,
     verified,
     seat_type,
     type_of_traveller,
