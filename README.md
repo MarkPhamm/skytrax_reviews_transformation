@@ -1,6 +1,6 @@
-# British Airways Data Transformation
+# Skytrax Airline Reviews Data Transformation
 
-This project implements a modern data transformation pipeline for British Airways, designed to process and model customer review data from [Airline Quality](https://www.airlinequality.com/airline-reviews/british-airways/). It leverages **dbt**, **Snowflake**, and **Apache Airflow**, orchestrated via **Astronomer**, to create a scalable, production-ready workflow.
+This project implements a modern data transformation pipeline for airline industry analytics, designed to process and model customer review data from **500+ airlines** across [Skytrax Airline Quality](https://www.airlinequality.com/). With over **100,000 reviews**, it leverages **dbt**, **Snowflake**, and **Apache Airflow**, orchestrated via **Astronomer**, to create a scalable, production-ready workflow for comprehensive airline performance analysis.
 
 ![image](https://github.com/user-attachments/assets/44063b8d-ad6b-45a3-b802-de5b449cc5d4)
 
@@ -29,7 +29,7 @@ This project implements a modern data transformation pipeline for British Airway
 ## ⚙️ Technology Stack
 <img width="1560" height="540" alt="image" src="https://github.com/user-attachments/assets/57dc62cb-46b2-4586-b1f6-5225ab8ca2af" />
 
-- **Data Source**: [British Airways Reviews on AirlineQuality](https://www.airlinequality.com/airline-reviews/british-airways/)
+- **Data Source**: [Skytrax Airline Reviews](https://www.airlinequality.com/) - 100k+ reviews from 500+ airlines
 - **Programming Language**: Python 3.12.5  
 - **Data Warehouse**: Snowflake  
 - **Transformation Tool**: dbt
@@ -40,13 +40,14 @@ This project implements a modern data transformation pipeline for British Airway
 ## 🧱 Data Architecture
 
 ### 1. Data Source
-Customer reviews are scraped from [AirlineQuality.com](https://www.airlinequality.com/airline-reviews/british-airways/), capturing structured and unstructured data elements including:
+Customer reviews are scraped from [Skytrax AirlineQuality.com](https://www.airlinequality.com/), capturing **100,000+ reviews from 500+ airlines worldwide**, including structured and unstructured data elements such as:
 
 - **Flight Route** (e.g., *Singapore to Sydney*)  
 - **Aircraft Type** (e.g., *Boeing 777*)
 - **Seat Type** (e.g., *Business Class*)  
 - **Type of Traveller** (e.g., *Solo Leisure*)  
 - **Date Flown** (e.g., *March 2025*) 
+- **Airline Information** (Carrier name, brand identity)
 - **Star Ratings** (Seat Comfort, Cabin Staff, Food & Beverages, Entertainment, Ground Service, Value for Money)  
 - **Review Text** and **Submission Date**  
 - **Verification Flag** (Trip Verified)  
@@ -62,14 +63,14 @@ Customer reviews are scraped from [AirlineQuality.com](https://www.airlinequalit
 - `dim_date`: Calendar and fiscal date tracking  
 
 #### Fact Table
-- `fct_review`: One row per customer review per flight  
-  - Includes metrics (ratings), booleans (verified, recommended), and categorical fields (seat type, travel type)
+- `fct_review`: One row per customer review per flight across all airlines
+  - Includes metrics (ratings), booleans (verified, recommended), categorical fields (seat type, travel type), and airline identifier
 
 ### 3. Data Flow
 - **Source Layer**: Web scraping + staging  
 - **Transformation Layer**: dbt modeling + business logic  
 - **Orchestration Layer**: DAG scheduling and task dependency management via **Astronomer**  
-- **Presentation Layer**: Clean fact/dim tables for BI/reporting
+- **Presentation Layer**: Clean fact/dim tables for BI/reporting and cross-airline benchmarking
 
 ### 4. Data Quality Framework
 - Null checks  
@@ -147,14 +148,14 @@ Let me know if you'd like a diagram for the Airflow DAG flow or a `README.md` ve
 ## Data Model Overview
 
 ### **Step 1: Business Processes**
-Business processes represent real-world events that generate measurable data. For British Airways, the core business process is the **collection of customer flight reviews**. Each review submitted by a customer reflects their experience on a specific flight and becomes a fact event. These reviews include detailed ratings on various service categories, forming the backbone of our analytical layer.
+Business processes represent real-world events that generate measurable data. Across the global airline industry, the core business process is the **collection of customer flight reviews**. Each review submitted by a customer reflects their experience on a specific flight with any of the 500+ airlines and becomes a fact event. These reviews include detailed ratings on various service categories, forming the backbone of our comprehensive airline analytics platform.
 
 ### **Step 2: Define the Grain**
 The grain defines the level of detail stored in the fact table. For this model, the grain is defined as:
 
 > **One customer review per flight.**
 
-Each row in the `fct_review` table represents a unique review event containing metrics tied to a specific customer’s flight experience. This atomic grain ensures consistency and supports granular performance analysis across multiple service touchpoints.
+Each row in the `fct_review` table represents a unique review event containing metrics tied to a specific customer's flight experience across any airline in our dataset. This atomic grain ensures consistency and supports granular performance analysis across multiple service touchpoints and enables cross-airline benchmarking and industry-wide insights.
 
 ### **Step 3: Dimensions for Descriptive Context**
 Dimension tables provide the **who, what, where, when** context for interpreting facts.
@@ -174,9 +175,9 @@ Facts are the **quantitative outputs** from the review process, collected per fl
   `verified`, `recommended`
 
 - **Categorical Descriptions:**  
-  `seat_type`, `type_of_traveller`, `review_text`
+  `seat_type`, `type_of_traveller`, `airline`, `review_text`
 
-These facts represent real customer input and form the foundation for performance dashboards, KPIs, and customer sentiment insights.
+These facts represent real customer input across 500+ airlines and form the foundation for performance dashboards, KPIs, customer sentiment insights, and comprehensive airline industry benchmarking.
 
 ---
 
@@ -193,5 +194,5 @@ This model follows a classic **star schema** structure where the `fct_review` ta
 
 ![schema](https://github.com/user-attachments/assets/f6276b06-9f03-410a-b2cc-785b0a23b8f2)
 
-This schema supports efficient slicing, filtering, and aggregating reviews by date, location, customer, and aircraft, enabling detailed insights across British Airways’ customer experience.
+This schema supports efficient slicing, filtering, and aggregating reviews by date, location, customer, aircraft, and airline, enabling detailed insights across the global airline industry and comprehensive cross-carrier performance analysis.
 
