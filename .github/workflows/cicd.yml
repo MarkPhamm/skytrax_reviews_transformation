@@ -20,7 +20,7 @@ env:
   SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
 
 jobs:
-  ba_transformation:
+  skytrax_transformation:
     runs-on: ubuntu-latest
 
     steps:
@@ -45,17 +45,17 @@ jobs:
 
       # 4️⃣ Install dbt dependencies defined in packages.yml
       - name: Install dbt dependencies
-        working-directory: ./ba_transformation
+        working-directory: ./skytrax_transformation
         run: dbt deps
 
       # 5️⃣ Test dbt connection to Snowflake (or target warehouse) using dbt debug
       - name: Testing connection
-        working-directory: ./ba_transformation
+        working-directory: ./skytrax_transformation
         run: dbt debug
 
       # 6️⃣ Run dbt build to execute all models, tests, and snapshots
       - name: Run dbt build
-        working-directory: ./ba_transformation
+        working-directory: ./skytrax_transformation
         run: dbt build --exclude dim_date --profiles-dir ./ --select staging+
 
       # 7️⃣ Send an email notification about the workflow status (always runs)
