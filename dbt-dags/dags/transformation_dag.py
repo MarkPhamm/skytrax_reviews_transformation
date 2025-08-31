@@ -3,7 +3,15 @@ from datetime import datetime
 
 from cosmos import DbtDag, ProjectConfig, ProfileConfig, ExecutionConfig
 from cosmos.profiles import SnowflakeUserPasswordProfileMapping
+from airflow.utils.trigger_rule import TriggerRule
 
+
+# Default arguments that will apply to all tasks created by cosmos
+default_args = {
+    'depends_on_past': False,
+    'retries': 0,
+    'trigger_rule': TriggerRule.ALL_DONE  # Run even if upstream tasks fail
+}
 
 profile_config = ProfileConfig(
     profile_name="ba_transformation",
@@ -14,7 +22,7 @@ profile_config = ProfileConfig(
             "database": "SKYTRAX_REVIEWS_DB",
             "schema": "MARTS",
             "warehouse": "COMPUTE_WH",
-            "role": "ACCOUNTADMIN"  # Adjust this to your actual role
+            "role": "ACCOUNTADMIN"
         }
     )
 )
@@ -27,8 +35,11 @@ dbt_transformation_dag = DbtDag(
     },
     profile_config=profile_config,
     execution_config=ExecutionConfig(dbt_executable_path=f"{os.environ['AIRFLOW_HOME']}/dbt_venv/bin/dbt",),
+    default_args=default_args,  # Apply trigger rules to all tasks
     schedule="0 19 * * 2",  # Run at 2pm CST (19:00 UTC) on Tuesday
     start_date=datetime(2025, 8, 1),
     catchup=False,
     dag_id="dbt_skytrax_transformation",
+    description="DBT transformation with continue-on-failure enabled",
+    tags=['dbt', 'transformation', 'resilient']
 )
