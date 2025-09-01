@@ -196,3 +196,40 @@ This model follows a classic **star schema** structure where the `fct_review` ta
 
 This schema supports efficient slicing, filtering, and aggregating reviews by date, location, customer, aircraft, and airline, enabling detailed insights across the global airline industry and comprehensive cross-carrier performance analysis.
 
+## User set up
+```SQL
+CREATE DATABASE SKYTRAX_REVIEWS_DB;
+USE SKYTRAX_REVIEWS_DB;
+CREATE SCHEMA RAW;
+CREATE SCHEMA MARTS;
+
+USE ROLE SECURITYADMIN;
+
+CREATE ROLE MARTS_ROLE;
+
+-- Grant usage on the database
+GRANT USAGE ON DATABASE SKYTRAX_REVIEWS_DB TO ROLE MARTS_ROLE;
+
+-- Grant usage on the schema MARTS
+GRANT USAGE ON SCHEMA SKYTRAX_REVIEWS_DB.MARTS TO ROLE MARTS_ROLE;
+
+-- Grant read access to all tables in MARTS
+GRANT SELECT ON ALL TABLES IN SCHEMA SKYTRAX_REVIEWS_DB.MARTS TO ROLE MARTS_ROLE;
+
+-- Ensure future tables in MARTS are also accessible
+GRANT SELECT ON FUTURE TABLES IN SCHEMA SKYTRAX_REVIEWS_DB.MARTS TO ROLE MARTS_ROLE;
+
+
+-- Define user variable
+SET my_user = '';
+
+-- Create user
+CREATE USER IDENTIFIER($my_user)
+  PASSWORD = ''
+  DEFAULT_ROLE = MARTS_ROLE
+  DEFAULT_WAREHOUSE = COMPUTE_WH
+  MUST_CHANGE_PASSWORD = FALSE;
+
+-- Grant role to user
+GRANT ROLE MARTS_ROLE TO USER IDENTIFIER($my_user);
+```
