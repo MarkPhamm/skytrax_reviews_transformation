@@ -17,8 +17,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_customer')
-        field: customer_id
+        arguments:
+          to: ref('dim_customer')
+          field: customer_id
 
   - name: date_submitted_id
     description: Unique identifier for the date the review was submitted.
@@ -26,8 +27,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_date')
-        field: date_id
+        arguments:
+          to: ref('dim_date')
+          field: date_id
 
   - name: date_flown_id
     description: Unique identifier for the date the flight was taken.
@@ -35,8 +37,9 @@ models:
     tests:
     # - not_null
     - relationships:
-        to: ref('dim_date')
-        field: date_id
+        arguments:
+          to: ref('dim_date')
+          field: date_id
 
   - name: origin_location_id
     description: Unique identifier for the origin location.
@@ -44,8 +47,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_location')
-        field: location_id
+        arguments:
+          to: ref('dim_location')
+          field: location_id
 
   - name: destination_location_id
     description: Unique identifier for the destination location.
@@ -53,8 +57,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_location')
-        field: location_id
+        arguments:
+          to: ref('dim_location')
+          field: location_id
 
   - name: transit_location_id
     description: Unique identifier for the transit location.
@@ -62,8 +67,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_location')
-        field: location_id
+        arguments:
+          to: ref('dim_location')
+          field: location_id
 
   - name: aircraft_id
     description: Unique identifier for the aircraft.
@@ -71,8 +77,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_aircraft')
-        field: aircraft_id
+        arguments:
+          to: ref('dim_aircraft')
+          field: aircraft_id
 
   - name: verified
     description: Indicates if the review is verified.
@@ -195,8 +202,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_customer')
-        field: customer_id
+        arguments:
+          to: ref('dim_customer')
+          field: customer_id
 
   - name: date_submitted_id
     description: Unique identifier for the date the review was submitted.
@@ -204,16 +212,18 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_date')
-        field: date_id
+        arguments:
+          to: ref('dim_date')
+          field: date_id
 
   - name: date_flown_id
     description: Unique identifier for the date the flight was taken.
     datatypes: integer
     tests:
     - relationships:
-        to: ref('dim_date')
-        field: date_id
+        arguments:
+          to: ref('dim_date')
+          field: date_id
 
   - name: origin_location_id
     description: Unique identifier for the origin location.
@@ -221,8 +231,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_location')
-        field: location_id
+        arguments:
+          to: ref('dim_location')
+          field: location_id
 
   - name: destination_location_id
     description: Unique identifier for the destination location.
@@ -230,8 +241,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_location')
-        field: location_id
+        arguments:
+          to: ref('dim_location')
+          field: location_id
 
   - name: transit_location_id
     description: Unique identifier for the transit location.
@@ -239,8 +251,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_location')
-        field: location_id
+        arguments:
+          to: ref('dim_location')
+          field: location_id
 
   - name: aircraft_id
     description: Unique identifier for the aircraft.
@@ -248,8 +261,9 @@ models:
     tests:
     - not_null
     - relationships:
-        to: ref('dim_aircraft')
-        field: aircraft_id
+        arguments:
+          to: ref('dim_aircraft')
+          field: aircraft_id
 
   # --- attributes (unchanged) ---
   - name: verified

@@ -15,16 +15,16 @@ models:
     - not_null:
         config:
           severity: warn
-          error_if: ">20"  # Allow up to 20 null values before failing
           warn_if: ">10"   # Warn if more than 10 null values
+          error_if: ">20"  # Allow up to 20 null values before failing
   - name: customer_name
     description: The name of the customer who submitted the review.
     tests:
     - not_null:
         config:
           severity: warn
-          error_if: ">10"  # Allow up to 10 null values before failing
           warn_if: ">5"    # Warn if more than 5 null values
+          error_if: ">10"  # Allow up to 10 null values before failing
   - name: nationality
     description: The nationality of the customer.
   - name: origin_city
