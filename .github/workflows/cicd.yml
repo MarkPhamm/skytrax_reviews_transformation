@@ -54,9 +54,9 @@ jobs:
         run: dbt debug
 
       # 6️⃣ Run dbt build to execute all models, tests, and snapshots
-      - name: Run dbt build
+      - name: Run dbt run
         working-directory: ./skytrax_transformation
-        run: dbt build --exclude dim_date --profiles-dir ./ --select staging+
+        run: dbt run --exclude dim_date --profiles-dir ./ --select staging+
 
       # 7️⃣ Send an email notification about the workflow status (always runs)
       - name: Send email notification
