@@ -18,29 +18,22 @@ pip install -r requirements.txt
 
 ### 2. Set Environment Variables
 
-Set these based on your Snowflake user. Each developer has their own dev schema.
+Set these based on your Snowflake user. Each developer has their own dev schema (`SNOWFLAKE_SCHEMA`).
 
 ```bash
-export SNOWFLAKE_ACCOUNT='nvnjoib-on80344'
-export SNOWFLAKE_USER='your-user'          # e.g., GINA_ANALYST
-export SNOWFLAKE_PASSWORD='your-password'
-export SNOWFLAKE_ROLE='SKYTRAX_ANALYST'    # or SKYTRAX_TRANSFORMER
+export SNOWFLAKE_ACCOUNT=nvnjoib-on80344
+export SNOWFLAKE_USER=your_user            # your Snowflake username
+export SNOWFLAKE_PASSWORD=your_password
+export SNOWFLAKE_ROLE=SKYTRAX_ANALYST
+export SNOWFLAKE_SCHEMA=DEV_your_name      # your personal dev schema (e.g., DEV_MINH)
 ```
 
-### 3. Configure Your Dev Schema
-
-The `dev` target in `profiles.yml` controls which schema dbt writes to. Update the `schema` field to match your personal dev schema:
-
-| User | Schema |
-|------|--------|
-| Minh | `DEV_MINH` |
-| Gina | `DEV_GINA` |
-| Vicient | `DEV_VICIENT` |
+Add these to your `~/.zshrc` or a `.envrc` so you don't have to set them every session.
 
 ### 4. Run dbt
 
 ```bash
-cd skytrax_transformation
+cd dbt
 dbt deps --profiles-dir ./
 dbt debug --profiles-dir ./          # verify connection
 dbt seed --profiles-dir ./           # load seed data

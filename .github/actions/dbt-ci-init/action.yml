@@ -42,7 +42,7 @@ runs:
 
     - name: dbt deps
       shell: bash
-      working-directory: ./skytrax_transformation
+      working-directory: ./dbt
       run: |
         source ../dbt_venv/bin/activate
         dbt deps --profiles-dir ./
@@ -58,4 +58,4 @@ runs:
       uses: actions/download-artifact@v4
       with:
         name: base_manifest
-        path: skytrax_transformation/base_state
+        path: dbt/base_state

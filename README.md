@@ -10,7 +10,7 @@ A modern data transformation and CI/CD pipeline for airline industry analytics, 
 
 ```text
 .
-├── skytrax_transformation/     # dbt project (single source of truth)
+├── dbt/     # dbt project (single source of truth)
 │   ├── models/
 │   │   ├── staging/            # 1:1 source mirrors (views)
 │   │   ├── intermediate/       # Cleaned/normalized business logic
@@ -21,7 +21,7 @@ A modern data transformation and CI/CD pipeline for airline industry analytics, 
 ├── dbt-dags/                   # Astronomer/Airflow orchestration
 │   ├── dags/
 │   │   ├── transformation_dag.py
-│   │   └── dbt/ -> ../../skytrax_transformation  (symlink)
+│   │   └── dbt/ -> ../../dbt  (symlink)
 │   └── Dockerfile
 ├── terraform/
 │   ├── snowflake/              # Snowflake RBAC, users, warehouses, schemas
@@ -170,7 +170,7 @@ export SNOWFLAKE_PASSWORD='your-password'
 export SNOWFLAKE_ROLE='SKYTRAX_TRANSFORMER'
 
 # 3. Run dbt
-cd skytrax_transformation
+cd dbt
 dbt deps --profiles-dir ./
 dbt debug --profiles-dir ./
 dbt run --profiles-dir ./         # uses dev target (your DEV_* schema)

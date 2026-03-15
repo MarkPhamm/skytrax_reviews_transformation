@@ -41,7 +41,7 @@ jobs:
         uses: ./.github/actions/dbt-ci-init
 
       - name: Build merge-base manifest (state baseline)
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
 
@@ -54,19 +54,19 @@ jobs:
           git -C "$(git rev-parse --show-toplevel)" archive "$BASE_SHA" | tar -x -C ../../dbt_base
 
           # Parse the baseline project to produce its manifest
-          cd ../../dbt_base/skytrax_transformation
+          cd ../../dbt_base/dbt
           source ../../skytrax_reviews_transformation/dbt_venv/bin/activate
           dbt deps --profiles-dir ./
           dbt parse --profiles-dir ./ --target staging
 
           # Copy manifest back for state comparison
-          cd ../../skytrax_reviews_transformation/skytrax_transformation
+          cd ../../skytrax_reviews_transformation/dbt
           mkdir -p base_state
-          cp ../../dbt_base/skytrax_transformation/target/manifest.json base_state/manifest.json
+          cp ../../dbt_base/dbt/target/manifest.json base_state/manifest.json
 
       - name: Detect changed models
         id: diff
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
 
@@ -101,14 +101,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: base_manifest
-          path: skytrax_transformation/base_state/manifest.json
+          path: dbt/base_state/manifest.json
           retention-days: 3
 
       - name: Upload changed models list
         uses: actions/upload-artifact@v4
         with:
           name: changed_models
-          path: skytrax_transformation/changed_models.txt
+          path: dbt/changed_models.txt
           retention-days: 3
 
   # ---------------------------------------------------------------------------
@@ -163,7 +163,7 @@ jobs:
           download_changed_models: "true"
 
       - name: Compile changed models
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
 
@@ -197,7 +197,7 @@ jobs:
           download_base_manifest: "true"
 
       - name: Run changed models (deferred)
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
 
@@ -237,7 +237,7 @@ jobs:
           download_base_manifest: "true"
 
       - name: Test changed models (deferred)
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
 

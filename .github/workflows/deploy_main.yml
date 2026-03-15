@@ -51,7 +51,7 @@ jobs:
         uses: ./.github/actions/dbt-ci-init
 
       - name: Verify Snowflake connection
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
           dbt debug --profiles-dir ./ --target prod
@@ -61,7 +61,7 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Download production manifest from S3
         id: prod_state
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           mkdir -p prod_state
           if aws s3 cp s3://$S3_ARTIFACTS_BUCKET/manifests/manifest.json prod_state/manifest.json 2>/dev/null; then
@@ -77,7 +77,7 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Run dbt build (incremental with defer)
         if: steps.prod_state.outputs.has_state == 'true'
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
           dbt build \
@@ -90,7 +90,7 @@ jobs:
 
       - name: Run dbt build (full -- no prior state)
         if: steps.prod_state.outputs.has_state == 'false'
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
           dbt run --profiles-dir ./ --target prod
@@ -100,13 +100,13 @@ jobs:
       # Generate and upload docs
       # -----------------------------------------------------------------------
       - name: Generate dbt docs
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
           dbt docs generate --profiles-dir ./ --target prod
 
       - name: Upload dbt docs to S3
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           aws s3 sync target/ s3://$S3_ARTIFACTS_BUCKET/docs/ \
             --delete \
@@ -117,7 +117,7 @@ jobs:
       # Upload production artifacts for next deploy + slim CI
       # -----------------------------------------------------------------------
       - name: Upload manifest and run_results to S3
-        working-directory: ./skytrax_transformation
+        working-directory: ./dbt
         run: |
           aws s3 cp target/manifest.json s3://$S3_ARTIFACTS_BUCKET/manifests/manifest.json
           aws s3 cp target/run_results.json s3://$S3_ARTIFACTS_BUCKET/run_results/run_results.json

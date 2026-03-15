@@ -15,31 +15,30 @@ default_args = {
 
 profile_config = ProfileConfig(
     profile_name="ba_transformation",
-    target_name="dev",
+    target_name="prod",
     profile_mapping=SnowflakeUserPasswordProfileMapping(
         conn_id="snowflake_default",
         profile_args={
             "database": "SKYTRAX_REVIEWS_DB",
-            "schema": "MARTS",
-            "warehouse": "COMPUTE_WH",
-            "role": "ACCOUNTADMIN"
+            "schema": "SOURCE",
+            "warehouse": "SKYTRAX_COMPUTE_MEDIUM",
+            "role": "SKYTRAX_TRANSFORMER"
         }
     )
 )
 
 dbt_transformation_dag = DbtDag(
-    project_config=ProjectConfig("/usr/local/airflow/dags/dbt/skytrax_transformation"),
+    project_config=ProjectConfig("/usr/local/airflow/dags/dbt"),
     operator_args={
         "install_deps": True,
-        "select": "tag:!one_time_run"  # Exclude one-time run models from regular scheduled runs
     },
     profile_config=profile_config,
     execution_config=ExecutionConfig(dbt_executable_path=f"{os.environ['AIRFLOW_HOME']}/dbt_venv/bin/dbt",),
-    default_args=default_args,  # Apply trigger rules to all tasks
+    default_args=default_args,
     schedule="0 19 * * 2",  # Run at 2pm CST (19:00 UTC) on Tuesday
     start_date=datetime(2025, 8, 1),
     catchup=False,
-    dag_id="dbt_skytrax_transformation",
-    description="DBT transformation with continue-on-failure enabled",
-    tags=['dbt', 'transformation', 'resilient']
+    dag_id="skytrax_dbt_transformation",
+    description="Production dbt transformation -- runs all models via PROD_DBT user",
+    tags=['dbt', 'transformation', 'prod']
 )
