@@ -28,6 +28,7 @@ final as (
     select
         {{ dbt_utils.generate_surrogate_key(['airline_name']) }} as airline_id,
         airline_name,
+        lower(trim(airline_name)) as airline_name_cleaned,
     from distinct_airlines
 
 )
