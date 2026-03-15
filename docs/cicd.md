@@ -250,6 +250,53 @@ No long-lived AWS credentials are stored anywhere. The trust is
 established between GitHub's OIDC issuer and the AWS IAM role's trust
 policy (defined in `terraform/aws/iam.tf`).
 
+### How It's Wired Together
+
+**Terraform side** (`terraform/aws/iam.tf`) creates two resources:
+
+1. **OIDC Provider** — registers GitHub's token issuer with AWS:
+
+    ```hcl
+    resource "aws_iam_openid_connect_provider" "github_actions" {
+      url            = "https://token.actions.githubusercontent.com"
+      client_id_list = ["sts.amazonaws.com"]
+    }
+    ```
+
+2. **IAM Role** — trust policy scoped to this repo only:
+
+    ```hcl
+    resource "aws_iam_role" "github_actions_cicd" {
+      assume_role_policy = jsonencode({
+        Statement = [{
+          Action    = "sts:AssumeRoleWithWebIdentity"
+          Principal = { Federated = <oidc_provider_arn> }
+          Condition = {
+            StringEquals = { "...aud" = "sts.amazonaws.com" }
+            StringLike   = { "...sub" = "repo:MarkPhamm/skytrax_reviews_transformation:*" }
+          }
+        }]
+      })
+    }
+    ```
+
+    The `*` wildcard covers both `ref:refs/heads/main` (CD) and
+    `ref:refs/pull/*/merge` (CI).
+
+**Workflow side** (`deploy_main.yml` / `pr_checks.yml`) — just one step:
+
+```yaml
+- uses: aws-actions/configure-aws-credentials@v4
+  with:
+    role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+    aws-region: us-east-1
+```
+
+The `AWS_ROLE_ARN` secret is the ARN output from
+`terraform output github_actions_role_arn`. That's the only connection
+between Terraform and the workflow — Terraform creates the role,
+GitHub Actions assumes it via OIDC.
+
 ---
 
 ## GitHub Secrets Required
