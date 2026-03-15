@@ -63,7 +63,7 @@ This project is my attempt to build all of that from scratch. I spent a full day
 | CI/CD | GitHub Actions (slim CI, defer/favor-state CD) |
 | Auth | AWS IAM OIDC (keyless) |
 | Artifact Storage | AWS S3 (manifests, run_results, docs) |
-| Docs Hosting | AWS EC2 + nginx |
+| Docs Hosting | AWS CloudFront + S3 |
 | Linting | SQLFluff |
 | Language | SQL, Python 3.12, Jinja |
 
