@@ -1,0 +1,86 @@
+version: 2
+
+models:
+  - name: int_reviews_cleaned
+    description: |
+      Cleaned and normalized reviews data.
+      Handles null coalescing, value normalization, and column aliasing.
+      Grain: one row per review submission.
+    columns:
+      - name: review_id
+        description: Unique identifier for each review (from staging).
+        tests:
+          - unique
+          - not_null
+      - name: customer_name
+        description: Name of the customer. Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: nationality
+        description: Nationality of the customer. Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: date_submitted
+        description: Date when the review was submitted.
+        tests:
+          - not_null
+      - name: date_flown
+        description: Date when the flight was taken.
+      - name: airline_name
+        description: Name of the airline. Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: origin_city
+        description: City of origin. Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: origin_airport
+        description: Airport code of origin. Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: destination_city
+        description: Destination city. Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: destination_airport
+        description: Destination airport code. Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: transit_city
+        description: Transit city (if applicable). Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: transit_airport
+        description: Transit airport code (if applicable). Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: aircraft_model
+        description: Aircraft model. Null values coalesced to 'Unknown'.
+        tests:
+          - not_null
+      - name: is_verified
+        description: Whether the review is verified by the airline.
+      - name: seat_type
+        description: Type of seat (Premium Economy, Business Class, Economy Class, First Class).
+      - name: type_of_traveller
+        description: Type of traveller (Business, Couple Leisure, Family Leisure, Solo Leisure).
+      - name: seat_comfort
+        description: Rating for seat comfort (1-5 scale).
+      - name: cabin_staff_service
+        description: Rating for cabin staff service (1-5 scale).
+      - name: food_and_beverages
+        description: Rating for food and beverages (1-5 scale).
+      - name: inflight_entertainment
+        description: Rating for inflight entertainment (1-5 scale).
+      - name: ground_service
+        description: Rating for ground service (1-5 scale).
+      - name: wifi_and_connectivity
+        description: Rating for wifi and connectivity (1-5 scale).
+      - name: value_for_money
+        description: Rating for value for money (1-5 scale).
+      - name: recommended
+        description: Whether the customer recommends the airline.
+      - name: review_text
+        description: Full text of the review.
+      - name: updated_at
+        description: Timestamp when the record was last updated in the source system.
