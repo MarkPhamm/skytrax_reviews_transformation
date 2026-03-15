@@ -22,7 +22,7 @@ The project uses two GitHub Actions workflows for continuous integration and dep
      --defer \
      --favor-state \
      --state prod_state \
-     --target staging
+     --target prod
    ```
 
    - `state:modified+` — selects models that changed plus their downstream dependencies
@@ -32,9 +32,8 @@ The project uses two GitHub Actions workflows for continuous integration and dep
 3. **First Run Fallback**: If no prior manifest exists in S3 (very first deploy), the workflow runs a full build:
 
    ```bash
-   dbt seed --target staging
-   dbt run --target staging
-   dbt test --target staging
+   dbt run --target prod
+   dbt test --target prod
    ```
 
 4. **Artifact Upload**: After a successful build, the new manifest and run results are uploaded to S3 for the next deploy cycle:
@@ -120,7 +119,6 @@ s3://<bucket>/
 | `SNOWFLAKE_USER` | CI/CD service account | `DBT_CICD` |
 | `SNOWFLAKE_PASSWORD` | Password for DBT_CICD | — |
 | `SNOWFLAKE_ROLE` | Role for CI/CD | `SKYTRAX_TRANSFORMER` |
-| `SNOWFLAKE_SCHEMA` | Target schema | `STAGING` |
 | `AWS_ROLE_ARN` | IAM role ARN for OIDC | `arn:aws:iam::<account>:role/skytrax-reviews-github-actions-role` |
 | `S3_ARTIFACTS_BUCKET` | S3 bucket for artifacts | `skytrax-reviews-dbt-artifacts-<account>` |
 | `EMAIL_USERNAME` | Gmail for notifications | — |

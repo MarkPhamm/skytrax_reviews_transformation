@@ -10,9 +10,11 @@ All infrastructure is managed with Terraform across two configurations: Snowflak
 
 | Schema | Purpose |
 |--------|---------|
-| `RAW` | Seed data loaded by `dbt seed` |
-| `STAGING` | Staging models — cleaned and standardized (views) |
+| `RAW` | Seed data loaded by `dbt seed` (one-off) |
+| `SOURCE` | Production staging models — cleaned and standardized (views) |
+| `INTERMEDIATE` | Production intermediate models — business logic transformations (views) |
 | `MARTS` | Business-ready tables for BI tools |
+| `STAGING` | CI scratch schema — used only during PR checks (flat, all models) |
 | `DEV_MINH` | Development schema for Minh (accountadmin) |
 | `DEV_GINA` | Development schema for Gina |
 | `DEV_VICIENT` | Development schema for Vicient |
@@ -51,7 +53,7 @@ ACCOUNTADMIN
 
 | User | Role | Default Schema | Purpose |
 |------|------|----------------|---------|
-| `PROD_DBT` | SKYTRAX_TRANSFORMER | STAGING | Production dbt runs |
+| `PROD_DBT` | SKYTRAX_TRANSFORMER | SOURCE | Production dbt runs |
 | `DBT_CICD` | SKYTRAX_TRANSFORMER | STAGING | GitHub Actions CI/CD |
 | `GINA_ANALYST` | SKYTRAX_ANALYST | DEV_GINA | Analyst (Gina) |
 | `VICIENT_ANALYST` | SKYTRAX_ANALYST | DEV_VICIENT | Analyst (Vicient) |

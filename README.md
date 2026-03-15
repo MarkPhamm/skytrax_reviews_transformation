@@ -78,9 +78,9 @@ The project follows **Kimball star schema** methodology with deterministic surro
 
 ```
 source (raw.skytrax_reviews)
-  └── stg__skytrax_reviews (staging, view)
-        └── int_reviews_cleaned (intermediate, cleaning + normalization)
-              ├── dim_customer
+  └── stg__skytrax_reviews (SOURCE schema, view)
+        └── int_reviews_cleaned (INTERMEDIATE schema, view)
+              ├── dim_customer (MARTS schema, table)
               ├── dim_airline
               ├── dim_aircraft
               ├── dim_location
@@ -136,7 +136,8 @@ See [docs/infrastructure.md](docs/infrastructure.md) for full details.
 |----------|---------|
 | Database | `SKYTRAX_REVIEWS_DB` |
 | Warehouses | 5 sizes: `SKYTRAX_COMPUTE_XSMALL` through `XLARGE` |
-| Production Schemas | `RAW`, `STAGING`, `MARTS` |
+| Production Schemas | `RAW`, `SOURCE`, `INTERMEDIATE`, `MARTS` |
+| CI Schema | `STAGING` (scratch space for PR checks) |
 | Dev Schemas | `DEV_MINH`, `DEV_GINA`, `DEV_VICIENT` (per-user) |
 | Roles | `SKYTRAX_ADMIN` > `SKYTRAX_TRANSFORMER` + `SKYTRAX_ANALYST` |
 | Service Accounts | `PROD_DBT`, `DBT_CICD` (transformer role) |
@@ -193,7 +194,6 @@ sqlfluff fix models/
 | `SNOWFLAKE_USER` | `DBT_CICD` |
 | `SNOWFLAKE_PASSWORD` | Password for DBT_CICD user |
 | `SNOWFLAKE_ROLE` | `SKYTRAX_TRANSFORMER` |
-| `SNOWFLAKE_SCHEMA` | `STAGING` |
 | `AWS_ROLE_ARN` | IAM role ARN for OIDC (from `terraform output`) |
 | `S3_ARTIFACTS_BUCKET` | S3 bucket name for artifacts |
 | `EMAIL_USERNAME` | Gmail address for deploy notifications |
