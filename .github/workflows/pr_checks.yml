@@ -51,7 +51,7 @@ jobs:
 
           # Materialize the base tree into a sibling folder
           mkdir -p ../../dbt_base
-          git archive "$BASE_SHA" | tar -x -C ../../dbt_base
+          git -C "$(git rev-parse --show-toplevel)" archive "$BASE_SHA" | tar -x -C ../../dbt_base
 
           # Parse the baseline project to produce its manifest
           cd ../../dbt_base/skytrax_transformation
