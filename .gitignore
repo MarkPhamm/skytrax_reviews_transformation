@@ -171,6 +171,12 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# dbt
+**/profiles.yml
+**/target/
+**/dbt_packages/
+**/logs/
 /configuration.env
 /.cursor
 /.vscode
