@@ -36,6 +36,11 @@ models:
       +schema: STAGING
       +enabled: true
       +tags: ['staging']
+    intermediate:
+      +materialized: view
+      +schema: STAGING
+      +enabled: true
+      +tags: ['intermediate']
     marts:
       +materialized: table
       +schema: MARTS
