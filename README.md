@@ -1,6 +1,6 @@
 # Skytrax Reviews Transformation & CI/CD Pipeline (Part 2)
 
-![airlines](assets/airlines.png)
+<img src="assets/airlines.png" width="100%">
 
 At Insurify, I run `dbt build --defer --favor-state` every day and curl the production manifest from S3 before every CI run — but I never fully understood what was happening under the hood. How does the manifest get there? Who uploads it? How does OIDC actually work? Why do we need a separate CI schema?
 
