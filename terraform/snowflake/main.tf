@@ -7,8 +7,8 @@
 # Role hierarchy:
 #   ACCOUNTADMIN
 #     -> SKYTRAX_ADMIN        (full control over the project database)
-#       -> SKYTRAX_TRANSFORMER (read/write for dbt CI/CD)
-#       -> SKYTRAX_ANALYST     (read-only on marts for BI tools)
+#       -> SKYTRAX_TRANSFORMER (read/write on production schemas for CI/CD)
+#       -> SKYTRAX_ANALYST     (read-only on marts + write on own dev schema)
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -17,24 +17,29 @@
 # A dedicated warehouse for this project. Auto-suspend keeps costs low
 # when nobody is running queries.
 
+locals {
+  warehouse_sizes = ["XSMALL", "SMALL", "MEDIUM", "LARGE", "XLARGE"]
+}
+
 resource "snowflake_warehouse" "compute" {
-  name           = "SKYTRAX_COMPUTE_WH"
-  warehouse_size = var.warehouse_size
+  for_each       = toset(local.warehouse_sizes)
+  name           = "SKYTRAX_COMPUTE_${each.value}"
+  warehouse_size = each.value
   auto_suspend   = var.warehouse_auto_suspend
   auto_resume    = true
 
-  # Only allow 1 cluster -- keeps things simple and cheap for a learning project
   min_cluster_count = 1
   max_cluster_count = 1
 
-  comment = "Warehouse for Skytrax Reviews dbt project. Managed by Terraform."
+  comment = "Skytrax ${each.value} warehouse. Managed by Terraform."
 }
 
 # -----------------------------------------------------------------------------
 # Database & Schemas
 # -----------------------------------------------------------------------------
 # The database matches what dbt expects in profiles.yml.
-# Schemas match the dbt_project.yml configuration (RAW, STAGING, MARTS, DEV).
+# Production schemas: RAW, STAGING, MARTS
+# Per-user dev schemas: DEV_MINH, DEV_GINA, DEV_VICIENT
 
 resource "snowflake_database" "skytrax" {
   name    = var.database_name
@@ -59,10 +64,22 @@ resource "snowflake_schema" "marts" {
   comment  = "Mart models -- business-ready tables for BI tools"
 }
 
-resource "snowflake_schema" "dev" {
+resource "snowflake_schema" "dev_minh" {
   database = snowflake_database.skytrax.name
-  name     = "DEV"
-  comment  = "Development schema for local dbt runs"
+  name     = "DEV_MINH"
+  comment  = "Development schema for Minh (accountadmin)"
+}
+
+resource "snowflake_schema" "dev_gina" {
+  database = snowflake_database.skytrax.name
+  name     = "DEV_GINA"
+  comment  = "Development schema for Gina"
+}
+
+resource "snowflake_schema" "dev_vicient" {
+  database = snowflake_database.skytrax.name
+  name     = "DEV_VICIENT"
+  comment  = "Development schema for Vicient"
 }
 
 # -----------------------------------------------------------------------------
@@ -77,7 +94,7 @@ resource "snowflake_account_role" "admin" {
 
 resource "snowflake_account_role" "transformer" {
   name    = "SKYTRAX_TRANSFORMER"
-  comment = "Read/write access for dbt CI/CD pipelines"
+  comment = "Read/write access on production schemas for dbt CI/CD"
 }
 
 resource "snowflake_account_role" "analyst" {
@@ -109,29 +126,32 @@ resource "snowflake_grant_account_role" "sysadmin_inherits_admin" {
 # -----------------------------------------------------------------------------
 
 resource "snowflake_grant_privileges_to_account_role" "transformer_wh_usage" {
+  for_each          = toset(local.warehouse_sizes)
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["USAGE", "OPERATE"]
   on_account_object {
     object_type = "WAREHOUSE"
-    object_name = snowflake_warehouse.compute.name
+    object_name = snowflake_warehouse.compute[each.value].name
   }
 }
 
 resource "snowflake_grant_privileges_to_account_role" "analyst_wh_usage" {
+  for_each          = toset(local.warehouse_sizes)
   account_role_name = snowflake_account_role.analyst.name
   privileges        = ["USAGE"]
   on_account_object {
     object_type = "WAREHOUSE"
-    object_name = snowflake_warehouse.compute.name
+    object_name = snowflake_warehouse.compute[each.value].name
   }
 }
 
 resource "snowflake_grant_privileges_to_account_role" "admin_wh_all" {
+  for_each          = toset(local.warehouse_sizes)
   account_role_name = snowflake_account_role.admin.name
   privileges        = ["USAGE", "OPERATE", "MODIFY", "MONITOR"]
   on_account_object {
     object_type = "WAREHOUSE"
-    object_name = snowflake_warehouse.compute.name
+    object_name = snowflake_warehouse.compute[each.value].name
   }
 }
 
@@ -167,21 +187,27 @@ resource "snowflake_grant_privileges_to_account_role" "admin_db" {
 }
 
 # -----------------------------------------------------------------------------
-# Grants -- Schemas (TRANSFORMER: all schemas read/write)
+# Grants -- Schemas (TRANSFORMER: production schemas read/write)
 # -----------------------------------------------------------------------------
 
 locals {
-  # All schemas the transformer role needs read/write access to
-  rw_schemas = {
+  # Production schemas the transformer role needs read/write access to
+  prod_schemas = {
     raw     = snowflake_schema.raw.name
     staging = snowflake_schema.staging.name
     marts   = snowflake_schema.marts.name
-    dev     = snowflake_schema.dev.name
+  }
+
+  # Per-user dev schemas
+  dev_schemas = {
+    minh    = snowflake_schema.dev_minh.name
+    gina    = snowflake_schema.dev_gina.name
+    vicient = snowflake_schema.dev_vicient.name
   }
 }
 
 resource "snowflake_grant_privileges_to_account_role" "transformer_schema_usage" {
-  for_each          = local.rw_schemas
+  for_each          = local.prod_schemas
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["USAGE", "CREATE TABLE", "CREATE VIEW"]
   on_schema {
@@ -191,7 +217,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_schema_usage"
 
 # Grant SELECT, INSERT, UPDATE, DELETE on all current and future tables in each schema
 resource "snowflake_grant_privileges_to_account_role" "transformer_future_tables" {
-  for_each          = local.rw_schemas
+  for_each          = local.prod_schemas
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"]
   on_schema_object {
@@ -203,7 +229,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_future_tables
 }
 
 resource "snowflake_grant_privileges_to_account_role" "transformer_future_views" {
-  for_each          = local.rw_schemas
+  for_each          = local.prod_schemas
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["SELECT"]
   on_schema_object {
@@ -249,37 +275,106 @@ resource "snowflake_grant_privileges_to_account_role" "analyst_marts_future_view
 }
 
 # -----------------------------------------------------------------------------
+# Grants -- Dev Schemas (per-user read/write for local dbt development)
+# -----------------------------------------------------------------------------
+# Each analyst gets full read/write on their own dev schema so they can run
+# dbt locally with --target dev.
+
+resource "snowflake_grant_privileges_to_account_role" "analyst_dev_schema_usage" {
+  for_each          = local.dev_schemas
+  account_role_name = snowflake_account_role.analyst.name
+  privileges        = ["USAGE", "CREATE TABLE", "CREATE VIEW"]
+  on_schema {
+    schema_name = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "analyst_dev_future_tables" {
+  for_each          = local.dev_schemas
+  account_role_name = snowflake_account_role.analyst.name
+  privileges        = ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"]
+  on_schema_object {
+    future {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+    }
+  }
+}
+
+resource "snowflake_grant_privileges_to_account_role" "analyst_dev_future_views" {
+  for_each          = local.dev_schemas
+  account_role_name = snowflake_account_role.analyst.name
+  privileges        = ["SELECT"]
+  on_schema_object {
+    future {
+      object_type_plural = "VIEWS"
+      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Users
 # -----------------------------------------------------------------------------
 
-resource "snowflake_user" "transformer" {
-  name              = "DBT_TRANSFORMER"
-  login_name        = "DBT_TRANSFORMER"
-  password          = var.transformer_user_password
-  default_warehouse = snowflake_warehouse.compute.name
+resource "snowflake_user" "prod_dbt" {
+  name              = "PROD_DBT"
+  login_name        = "PROD_DBT"
+  password          = var.prod_dbt_password
+  default_warehouse = snowflake_warehouse.compute["XSMALL"].name
   default_role      = snowflake_account_role.transformer.name
-  default_namespace = "${snowflake_database.skytrax.name}.DEV"
-  comment           = "Service account for dbt CI/CD. Managed by Terraform."
+  default_namespace = "${snowflake_database.skytrax.name}.STAGING"
+  comment           = "Production dbt service account. Managed by Terraform."
 }
 
-resource "snowflake_user" "analyst" {
-  name              = "SKYTRAX_ANALYST"
-  login_name        = "SKYTRAX_ANALYST"
-  password          = var.analyst_user_password
-  default_warehouse = snowflake_warehouse.compute.name
+resource "snowflake_user" "cicd" {
+  name              = "DBT_CICD"
+  login_name        = "DBT_CICD"
+  password          = var.cicd_user_password
+  default_warehouse = snowflake_warehouse.compute["XSMALL"].name
+  default_role      = snowflake_account_role.transformer.name
+  default_namespace = "${snowflake_database.skytrax.name}.STAGING"
+  comment           = "Service account for GitHub Actions CI/CD pipelines. Managed by Terraform."
+}
+
+resource "snowflake_user" "gina_analyst" {
+  name              = "GINA_ANALYST"
+  login_name        = "GINA_ANALYST"
+  password          = var.gina_analyst_password
+  default_warehouse = snowflake_warehouse.compute["XSMALL"].name
   default_role      = snowflake_account_role.analyst.name
-  default_namespace = "${snowflake_database.skytrax.name}.MARTS"
-  comment           = "Read-only analyst account for BI tools. Managed by Terraform."
+  default_namespace = "${snowflake_database.skytrax.name}.${snowflake_schema.dev_gina.name}"
+  comment           = "Analyst account for Gina. Managed by Terraform."
+}
+
+resource "snowflake_user" "vicient_analyst" {
+  name              = "VICIENT_ANALYST"
+  login_name        = "VICIENT_ANALYST"
+  password          = var.vicient_analyst_password
+  default_warehouse = snowflake_warehouse.compute["XSMALL"].name
+  default_role      = snowflake_account_role.analyst.name
+  default_namespace = "${snowflake_database.skytrax.name}.${snowflake_schema.dev_vicient.name}"
+  comment           = "Analyst account for Vicient. Managed by Terraform."
 }
 
 # --- Assign roles to users ---
 
-resource "snowflake_grant_account_role" "transformer_to_user" {
+resource "snowflake_grant_account_role" "transformer_to_prod_dbt" {
   role_name = snowflake_account_role.transformer.name
-  user_name = snowflake_user.transformer.name
+  user_name = snowflake_user.prod_dbt.name
 }
 
-resource "snowflake_grant_account_role" "analyst_to_user" {
+resource "snowflake_grant_account_role" "transformer_to_cicd" {
+  role_name = snowflake_account_role.transformer.name
+  user_name = snowflake_user.cicd.name
+}
+
+resource "snowflake_grant_account_role" "analyst_to_gina" {
   role_name = snowflake_account_role.analyst.name
-  user_name = snowflake_user.analyst.name
+  user_name = snowflake_user.gina_analyst.name
+}
+
+resource "snowflake_grant_account_role" "analyst_to_vicient" {
+  role_name = snowflake_account_role.analyst.name
+  user_name = snowflake_user.vicient_analyst.name
 }

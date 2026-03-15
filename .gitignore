@@ -172,6 +172,14 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Terraform
+*.tfvars
+!*.tfvars.example
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
 # dbt
 **/target/
 **/dbt_packages/

@@ -29,16 +29,28 @@ variable "snowflake_admin_password" {
   sensitive   = true
 }
 
-# --- Users ---
+# --- User Passwords ---
 
-variable "transformer_user_password" {
-  description = "Password for the TRANSFORMER service account (used by dbt CI/CD)"
+variable "prod_dbt_password" {
+  description = "Password for the PROD_DBT service account (production dbt runs)"
   type        = string
   sensitive   = true
 }
 
-variable "analyst_user_password" {
-  description = "Password for the ANALYST user (used by BI tools)"
+variable "cicd_user_password" {
+  description = "Password for the DBT_CICD service account (used by GitHub Actions)"
+  type        = string
+  sensitive   = true
+}
+
+variable "gina_analyst_password" {
+  description = "Password for GINA_ANALYST user"
+  type        = string
+  sensitive   = true
+}
+
+variable "vicient_analyst_password" {
+  description = "Password for VICIENT_ANALYST user"
   type        = string
   sensitive   = true
 }
@@ -52,12 +64,6 @@ variable "database_name" {
 }
 
 # --- Warehouse ---
-
-variable "warehouse_size" {
-  description = "Size of the compute warehouse (XSMALL, SMALL, MEDIUM, etc.)"
-  type        = string
-  default     = "XSMALL"
-}
 
 variable "warehouse_auto_suspend" {
   description = "Seconds of inactivity before the warehouse auto-suspends (saves credits)"

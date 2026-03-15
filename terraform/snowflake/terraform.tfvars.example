@@ -13,10 +13,11 @@ snowflake_admin_password    = "CHANGE_ME"
 
 # --- User Passwords ---
 # Use strong passwords! These are for service/BI accounts.
-transformer_user_password = "CHANGE_ME"
-analyst_user_password     = "CHANGE_ME"
+prod_dbt_password        = "CHANGE_ME"
+cicd_user_password       = "CHANGE_ME"
+gina_analyst_password    = "CHANGE_ME"
+vicient_analyst_password = "CHANGE_ME"
 
 # --- Optional Overrides ---
-# database_name         = "SKYTRAX_REVIEWS_DB"
-# warehouse_size        = "XSMALL"
+# database_name          = "SKYTRAX_REVIEWS_DB"
 # warehouse_auto_suspend = 60
