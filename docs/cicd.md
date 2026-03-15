@@ -2,133 +2,234 @@
 
 ## Overview
 
-The project uses two GitHub Actions workflows for continuous integration and deployment. Both authenticate with AWS using **OIDC** (no static credentials) and connect to Snowflake via the `DBT_CICD` service account.
+Two GitHub Actions workflows handle continuous integration and deployment.
+Both authenticate with AWS using **OIDC** (no static credentials) and
+connect to Snowflake via the `DBT_CICD` service account with the
+`SKYTRAX_TRANSFORMER` role.
 
 ---
 
 ## Continuous Deployment — `deploy_main.yml`
 
-**Triggers**: push to `main`, weekly schedule (Monday 00:00 UTC), manual dispatch.
+**Triggers:**
 
-### How It Works
+- Push to `main` (only when `dbt/`, `requirements.txt`, or workflow files change)
+- Weekly schedule (Monday 00:00 UTC)
+- Manual dispatch
 
-1. **OIDC Authentication**: The workflow assumes an AWS IAM role via GitHub's OIDC provider — no `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` needed.
+**Concurrency:** Only one deploy runs at a time. If a second push happens
+while a deploy is running, it queues instead of cancelling.
 
-2. **Incremental Deploy (defer/favor-state)**: Instead of rebuilding every model on each deploy, the workflow downloads the production manifest from S3 and uses dbt's `--defer --favor-state` flags to only rebuild what changed:
+### Step-by-Step Walkthrough
 
-   ```bash
-   dbt build \
-     --select state:modified+ \
-     --defer \
-     --favor-state \
-     --state prod_state \
-     --target prod
-   ```
+#### Step 1: Setup
 
-   - `state:modified+` — selects models that changed plus their downstream dependencies
-   - `--defer` — for unmodified models, reference the production tables instead of rebuilding
-   - `--favor-state` — prefer the production state when resolving deferred models
+| What | Why |
+| ---- | --- |
+| Checkout code with full history | Needed for state comparison |
+| Assume AWS IAM role via OIDC | Keyless auth — no static AWS credentials |
+| Create Python venv, install dbt + sqlfluff | Fresh venv every run (no caching) |
+| Install dbt packages (`dbt deps`) | Pulls dbt_utils, dbt_expectations, etc. |
+| `dbt debug --target prod` | Verify Snowflake connection before doing any work |
 
-3. **First Run Fallback**: If no prior manifest exists in S3 (very first deploy), the workflow runs a full build:
+#### Step 2: Download Production State
 
-   ```bash
-   dbt run --target prod
-   dbt test --target prod
-   ```
+```bash
+aws s3 cp s3://<bucket>/manifests/manifest.json prod_state/manifest.json
+```
 
-4. **Artifact Upload**: After a successful build, the new manifest and run results are uploaded to S3 for the next deploy cycle:
+Downloads the manifest from the last successful deploy. If this is the
+very first deploy and no manifest exists, the workflow flags it and falls
+back to a full build in the next step.
 
-   ```text
-   s3://<bucket>/manifests/manifest.json
-   s3://<bucket>/run_results/run_results.json
-   s3://<bucket>/docs/            # dbt docs site
-   ```
+#### Step 3: Build Models
 
-5. **Email Notification**: Sends a status email on every run (success or failure).
+**If production manifest exists (normal case):**
 
-### Concurrency
+```bash
+dbt build \
+  --select state:modified+ \
+  --defer \
+  --favor-state \
+  --state prod_state \
+  --target prod
+```
 
-Only one deploy runs at a time (`cancel-in-progress: false`). If a second push happens while a deploy is running, it queues rather than cancels the in-progress run.
+- `state:modified+` — selects models that changed since the last deploy,
+  plus all their downstream dependencies
+- `--defer` — for unmodified models, reference the existing production
+  tables instead of rebuilding them
+- `--favor-state` — when resolving deferred refs, prefer the production
+  state over the local project
+- Result: only the models you actually changed get rebuilt
+
+**If no production manifest exists (first deploy):**
+
+```bash
+dbt run --target prod
+dbt test --target prod
+```
+
+Runs and tests everything from scratch.
+
+#### Step 4: Generate and Upload dbt Docs
+
+```bash
+dbt docs generate --target prod
+
+aws s3 sync target/ s3://<bucket>/docs/ \
+  --delete \
+  --include "*.html" \
+  --include "*.json"
+```
+
+Generates the static docs site (`index.html`, `catalog.json`,
+`manifest.json`) and syncs it to S3.
+
+#### Step 5: Invalidate CloudFront Cache
+
+```bash
+aws cloudfront create-invalidation \
+  --distribution-id <distribution-id> \
+  --paths "/*"
+```
+
+Busts the CloudFront cache so the latest docs are live immediately at
+<https://d38l3fc9bckvbz.cloudfront.net>.
+
+#### Step 6: Upload Artifacts for Next Deploy
+
+```bash
+aws s3 cp target/manifest.json s3://<bucket>/manifests/manifest.json
+aws s3 cp target/run_results.json s3://<bucket>/run_results/run_results.json
+```
+
+Saves the new manifest so the next deploy can use `--defer --favor-state`
+against it. This is what closes the loop — each deploy builds on the
+last one.
+
+#### Step 7: Email Notification
+
+Sends a status email (success or failure) with a link to the workflow run.
+Runs even if previous steps failed (`if: always()`).
 
 ---
 
 ## Continuous Integration — `pr_checks.yml`
 
-**Triggers**: pull request opened, synchronized, or reopened against `main`.
+**Triggers:** Pull request opened, synchronized, or reopened against `main`.
 
-### How It Works
+**Concurrency:** Cancels in-progress runs on the same PR number. Saves
+CI minutes when pushing rapid commits.
 
-The CI pipeline has 5 jobs that run sequentially:
+### CI Step-by-Step Walkthrough
+
+The CI pipeline has **5 sequential jobs**. Each job sets up its own
+fresh Python venv (no caching). Jobs 3-5 only run if changes are detected.
 
 #### Job 1: Setup & Detect Changes
 
-- Computes the merge-base between the PR branch and `main`
-- Checks out the base code and runs `dbt parse` to produce a baseline manifest
-- Parses the PR code and uses `dbt ls --state base_state --select state:modified state:new` to find changed models
-- Outputs: list of changed models, boolean flag for whether changes exist
+**Goal:** Figure out which dbt models changed in this PR.
+
+```text
+1. Compute merge-base SHA between PR branch and main
+2. Check out the base code (main at merge point)
+3. Run dbt parse on the base code → produces baseline manifest
+4. Run dbt parse on the PR code
+5. Run dbt ls --state base_state --select state:modified state:new
+6. Output: list of changed model names + boolean has_changes flag
+7. Upload base manifest and changed models list as artifacts
+```
+
+The merge-base approach is important — it compares your PR against the
+point where your branch diverged from `main`, not against the latest
+`main`. This avoids false positives from other PRs that merged while
+you were working.
 
 #### Job 2: Lint SQL
 
-- Runs `sqlfluff lint` on changed `.sql` files only (not the entire project)
-- Uses merge-base diff to identify which files changed
+**Goal:** Catch style/formatting issues early.
+
+```text
+1. Compute the same merge-base SHA
+2. git diff --name-only to find changed .sql files
+3. Run sqlfluff lint on only those files
+```
+
+Uses the `setup.cfg` config at the project root (lowercased SQL,
+trailing commas, explicit aliases, shorthand casting).
+
+This job runs in parallel with Job 1 — it doesn't need the changed
+models list, just the git diff.
 
 #### Job 3: Compile Changed Models
 
-- Runs `dbt compile --select <changed_models>` to verify SQL compiles
-- Only runs if changes were detected
+**Goal:** Verify the SQL compiles without hitting Snowflake.
+
+```bash
+dbt compile --select <changed_models> --target staging
+```
+
+- Only runs if Job 1 found changes (`has_changes == true`)
+- Catches Jinja errors, missing refs, and syntax issues
+- No Snowflake queries — pure compilation
 
 #### Job 4: Run Changed Models
 
-- Runs `dbt run --select <changed_models> --defer --state base_state`
-- Uses `--defer` so unchanged upstream models reference the base state instead of being rebuilt
-- Only runs if compilation succeeded
+**Goal:** Actually execute the changed models against Snowflake.
+
+```bash
+dbt run \
+  --select <changed_models> \
+  --defer \
+  --state base_state \
+  --target staging \
+  --fail-fast
+```
+
+- Uses `--defer` so unchanged upstream models reference the base state
+  (from the merge-base manifest) instead of being rebuilt
+- `--target staging` writes to the `STAGING` schema (CI scratch space)
+- `--fail-fast` stops on first failure to save time
+- Only runs if compilation succeeded (depends on Job 3)
 
 #### Job 5: Test Changed Models
 
-- Runs `dbt test --select <changed_models> --defer --state base_state`
-- Tests only the models that changed
-- Only runs if the run step succeeded
+**Goal:** Run data quality tests on the models you changed.
 
-### Concurrency
+```bash
+dbt test \
+  --select <changed_models> \
+  --defer \
+  --state base_state \
+  --target staging
+```
 
-PRs cancel in-progress runs on the same PR number (`cancel-in-progress: true`). This saves CI minutes when pushing rapid commits.
+- Same defer logic — unchanged upstream models use the base state
+- Tests run in the `STAGING` schema
+- Only runs if the run step succeeded (depends on Job 4)
 
 ---
 
 ## S3 Artifact Layout
 
-```
+```text
 s3://<bucket>/
 ├── manifests/
 │   └── manifest.json          # Production state for defer/favor-state
 ├── run_results/
 │   └── run_results.json       # Last deploy results
 └── docs/
-    ├── index.html             # dbt docs site
+    ├── index.html             # dbt docs site (served by CloudFront)
     ├── catalog.json
     └── manifest.json
 ```
 
 ---
 
-## GitHub Secrets Required
-
-| Secret | Description | Example |
-|--------|-------------|---------|
-| `SNOWFLAKE_ACCOUNT` | Snowflake account identifier | `nvnjoib-on80344` |
-| `SNOWFLAKE_USER` | CI/CD service account | `DBT_CICD` |
-| `SNOWFLAKE_PASSWORD` | Password for DBT_CICD | — |
-| `SNOWFLAKE_ROLE` | Role for CI/CD | `SKYTRAX_TRANSFORMER` |
-| `AWS_ROLE_ARN` | IAM role ARN for OIDC | `arn:aws:iam::<account>:role/skytrax-reviews-github-actions-role` |
-| `S3_ARTIFACTS_BUCKET` | S3 bucket for artifacts | `skytrax-reviews-dbt-artifacts-<account>` |
-| `EMAIL_USERNAME` | Gmail for notifications | — |
-| `EMAIL_PASSWORD` | Gmail app password | — |
-
----
-
 ## OIDC Authentication Flow
 
-```
+```text
 GitHub Actions Runner
   │
   ├─ 1. Request OIDC token from GitHub's token endpoint
@@ -142,7 +243,25 @@ GitHub Actions Runner
   │     - Checks subject matches "repo:MarkPhamm/skytrax_reviews_transformation:*"
   │
   └─ 4. STS returns temporary credentials (15 min default)
-        (workflow can now call S3 APIs)
+        (workflow can now call S3 and CloudFront APIs)
 ```
 
-No long-lived AWS credentials are stored anywhere. The trust is established between GitHub's OIDC issuer and the AWS IAM role's trust policy.
+No long-lived AWS credentials are stored anywhere. The trust is
+established between GitHub's OIDC issuer and the AWS IAM role's trust
+policy (defined in `terraform/aws/iam.tf`).
+
+---
+
+## GitHub Secrets Required
+
+| Secret | Description | Example |
+| ------ | ----------- | ------- |
+| `SNOWFLAKE_ACCOUNT` | Snowflake account identifier | `nvnjoib-on80344` |
+| `SNOWFLAKE_USER` | CI/CD service account | `DBT_CICD` |
+| `SNOWFLAKE_PASSWORD` | Password for DBT_CICD | — |
+| `SNOWFLAKE_ROLE` | Role for CI/CD | `SKYTRAX_TRANSFORMER` |
+| `AWS_ROLE_ARN` | IAM role ARN for OIDC | `arn:aws:iam::<id>:role/...` |
+| `S3_ARTIFACTS_BUCKET` | S3 bucket for artifacts | `skytrax-reviews-dbt-artifacts-<id>` |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront distribution for docs | `E3LT0BDSMSIG7H` |
+| `EMAIL_USERNAME` | Gmail for notifications | — |
+| `EMAIL_PASSWORD` | Gmail app password | — |

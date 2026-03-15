@@ -2,7 +2,7 @@
 
 ## Live URL
 
-**https://d38l3fc9bckvbz.cloudfront.net**
+**<https://d38l3fc9bckvbz.cloudfront.net>**
 
 Docs are automatically updated on every merge to `main` — the CD pipeline runs `dbt docs generate`, uploads to S3, and invalidates the CloudFront cache.
 
@@ -26,7 +26,7 @@ merge to main
 We originally planned an EC2 + nginx approach (the Terraform code is still in `ec2.tf.disabled` and `vpc.tf.disabled` for reference). Here's why we switched:
 
 | | EC2 + nginx | CloudFront + S3 |
-|---|---|---|
+| - | --- | --- |
 | **Cost** | ~$8/month after free tier expires | $0 (permanent free tier: 1TB/month) |
 | **Maintenance** | OS patches, nginx config, cron job to sync from S3 | Zero — fully managed |
 | **Update speed** | 5-minute cron delay | Instant (cache invalidation) |
@@ -49,7 +49,7 @@ The GitHub Actions IAM role also has `cloudfront:CreateInvalidation` permission 
 ## GitHub Secrets
 
 | Secret | Value |
-|--------|-------|
+| -------- | ------- |
 | `CLOUDFRONT_DISTRIBUTION_ID` | `E3LT0BDSMSIG7H` |
 
 This is used in the deploy workflow to invalidate the cache after uploading docs.
