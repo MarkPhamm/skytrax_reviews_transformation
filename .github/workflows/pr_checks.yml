@@ -271,3 +271,100 @@ jobs:
           else
             echo "No changed models to test."
           fi
+
+  # ---------------------------------------------------------------------------
+  # Job 6: Run downstream models of changed models with --defer
+  # ---------------------------------------------------------------------------
+  run_downstream:
+    name: Run Downstream Models
+    runs-on: ubuntu-latest
+    needs: [setup_env, run_changed]
+    if: needs.setup_env.outputs.has_changes == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ci-init
+        uses: ./.github/actions/dbt-ci-init
+        with:
+          download_changed_models: "true"
+          download_base_manifest: "true"
+
+      - name: Run downstream models (deferred)
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+
+          MODELS="${{ needs.setup_env.outputs.changed_models }}"
+          if [ -n "$MODELS" ]; then
+            # Build selection: append + to each model for downstream selection,
+            # then exclude the changed models themselves (already run in Job 4)
+            SELECT_ARGS=""
+            EXCLUDE_ARGS=""
+            for model in $MODELS; do
+              SELECT_ARGS="$SELECT_ARGS ${model}+"
+              EXCLUDE_ARGS="$EXCLUDE_ARGS $model"
+            done
+
+            echo "Running downstream of: $MODELS"
+            dbt run \
+              --profiles-dir ./ \
+              --select $SELECT_ARGS \
+              --exclude $EXCLUDE_ARGS \
+              --defer \
+              --state base_state \
+              --target staging \
+              --fail-fast
+          else
+            echo "No changed models — skipping downstream run."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Job 7: Test downstream models of changed models with --defer
+  # ---------------------------------------------------------------------------
+  test_downstream:
+    name: Test Downstream Models
+    runs-on: ubuntu-latest
+    needs: [setup_env, run_downstream]
+    if: needs.setup_env.outputs.has_changes == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ci-init
+        uses: ./.github/actions/dbt-ci-init
+        with:
+          download_changed_models: "true"
+          download_base_manifest: "true"
+
+      - name: Test downstream models (deferred)
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+
+          MODELS="${{ needs.setup_env.outputs.changed_models }}"
+          if [ -n "$MODELS" ]; then
+            SELECT_ARGS=""
+            EXCLUDE_ARGS=""
+            for model in $MODELS; do
+              SELECT_ARGS="$SELECT_ARGS ${model}+"
+              EXCLUDE_ARGS="$EXCLUDE_ARGS $model"
+            done
+
+            echo "Testing downstream of: $MODELS"
+            dbt test \
+              --profiles-dir ./ \
+              --select $SELECT_ARGS \
+              --exclude $EXCLUDE_ARGS \
+              --defer \
+              --state base_state \
+              --target staging
+          else
+            echo "No changed models — skipping downstream tests."
+          fi
