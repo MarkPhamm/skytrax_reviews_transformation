@@ -33,3 +33,15 @@ output "public_subnet_id" {
   description = "Public subnet ID"
   value       = aws_subnet.public.id
 }
+
+# --- GitHub Actions OIDC ---
+
+output "github_actions_role_arn" {
+  description = "IAM role ARN for GitHub Actions -- use this in workflow files with aws-actions/configure-aws-credentials"
+  value       = aws_iam_role.github_actions_cicd.arn
+}
+
+output "github_actions_oidc_provider_arn" {
+  description = "OIDC provider ARN -- only one per AWS account per issuer URL"
+  value       = aws_iam_openid_connect_provider.github_actions.arn
+}

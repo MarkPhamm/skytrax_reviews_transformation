@@ -45,3 +45,10 @@ variable "allowed_ssh_cidr" {
   type        = string
   default     = "0.0.0.0/0" # Restrict this in production!
 }
+
+# --- GitHub Actions OIDC ---
+
+variable "github_repository" {
+  description = "GitHub repository in 'owner/repo' format, used to scope the OIDC trust policy"
+  type        = string
+}

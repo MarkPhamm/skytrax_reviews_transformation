@@ -4,7 +4,7 @@
 # Resources are split by service:
 #   - s3.tf   : S3 bucket for dbt artifacts (slim CI state comparison)
 #   - vpc.tf  : VPC with public subnet for the dbt docs server
-#   - iam.tf  : IAM role and instance profile for EC2 S3 access
+#   - iam.tf  : IAM roles -- EC2 docs server + GitHub Actions OIDC for CI/CD
 #   - ec2.tf  : EC2 instance running nginx to serve dbt docs
 # =============================================================================
 

@@ -22,3 +22,8 @@ instance_type   = "t3.micro"
 
 # Restrict SSH to your IP for security (find yours at https://checkip.amazonaws.com)
 allowed_ssh_cidr = "0.0.0.0/0"
+
+# --- GitHub Actions OIDC ---
+# Your GitHub repo in "owner/repo" format. This scopes the OIDC trust policy
+# so only workflows from this specific repo can assume the CI/CD role.
+github_repository = "your-username/skytrax_reviews_transformation"
