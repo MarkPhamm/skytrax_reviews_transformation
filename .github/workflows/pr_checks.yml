@@ -53,11 +53,12 @@ jobs:
           mkdir -p ../../dbt_base
           git -C "$(git rev-parse --show-toplevel)" archive "$BASE_SHA" | tar -x -C ../../dbt_base
 
-          # Parse the baseline project to produce its manifest
+          # Parse the baseline project to produce its manifest (use prod target
+          # so dbt clone can resolve production schema locations)
           cd ../../dbt_base/dbt
           source ../../skytrax_reviews_transformation/dbt_venv/bin/activate
           dbt deps --profiles-dir ./
-          dbt parse --profiles-dir ./ --target staging
+          dbt parse --profiles-dir ./ --target prod
 
           # Copy manifest back for state comparison
           cd ../../skytrax_reviews_transformation/dbt
@@ -218,7 +219,10 @@ jobs:
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
-          dbt run-operation clone_prod_to_staging --profiles-dir ./ --target staging
+          dbt clone \
+            --profiles-dir ./ \
+            --state base_state \
+            --target staging
 
       - name: Run changed models
         working-directory: ./dbt
