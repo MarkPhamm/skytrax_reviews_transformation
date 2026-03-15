@@ -1,0 +1,16 @@
+# Terraform state files -- contain sensitive data, never commit
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Variable files with real values -- may contain passwords
+*.tfvars
+!*.tfvars.example
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Plan output files
+*.tfplan

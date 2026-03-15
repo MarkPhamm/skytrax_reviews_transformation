@@ -1,0 +1,22 @@
+# =============================================================================
+# Snowflake Terraform Variables -- EXAMPLE
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars to version control.
+# =============================================================================
+
+# --- Snowflake Connection ---
+snowflake_organization_name = "your-org-name"
+snowflake_account_name      = "your-account-name"
+snowflake_admin_user        = "ACCOUNTADMIN_USER"
+snowflake_admin_password    = "CHANGE_ME"
+
+# --- User Passwords ---
+# Use strong passwords! These are for service/BI accounts.
+transformer_user_password = "CHANGE_ME"
+analyst_user_password     = "CHANGE_ME"
+
+# --- Optional Overrides ---
+# database_name         = "SKYTRAX_REVIEWS_DB"
+# warehouse_size        = "XSMALL"
+# warehouse_auto_suspend = 60

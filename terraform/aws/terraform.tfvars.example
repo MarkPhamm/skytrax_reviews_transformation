@@ -1,0 +1,24 @@
+# =============================================================================
+# AWS Terraform Variables -- EXAMPLE
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars to version control.
+# =============================================================================
+
+# --- General ---
+aws_region   = "us-east-1"
+environment  = "dev"
+project_name = "skytrax-reviews"
+
+# --- S3 ---
+# Bucket names must be globally unique. Pick something like:
+# "skytrax-reviews-dbt-artifacts-<your-account-id>"
+artifacts_bucket_name = "skytrax-reviews-dbt-artifacts-CHANGE-ME"
+
+# --- EC2 ---
+# Create a key pair in the AWS console first, then reference its name here
+ssh_key_name    = "my-key-pair"
+instance_type   = "t3.micro"
+
+# Restrict SSH to your IP for security (find yours at https://checkip.amazonaws.com)
+allowed_ssh_cidr = "0.0.0.0/0"
