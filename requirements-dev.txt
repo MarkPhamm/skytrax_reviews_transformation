@@ -1,0 +1,5 @@
+-r requirements.txt
+ipykernel==6.29.5
+ipynb==0.5.1
+pandas==2.2.3
+snowflake-sqlalchemy==1.7.3

@@ -13,7 +13,7 @@
 ```bash
 python -m venv dbt_venv
 source dbt_venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt  # includes dbt + dev tools (pandas, ipykernel, etc.)
 ```
 
 ### 2. Set Environment Variables
@@ -30,7 +30,7 @@ export SNOWFLAKE_SCHEMA=DEV_your_name      # your personal dev schema (e.g., DEV
 
 Add these to your `~/.zshrc` or a `.envrc` so you don't have to set them every session.
 
-### 4. Run dbt
+### 3. Run dbt
 
 ```bash
 cd dbt
@@ -90,11 +90,14 @@ warehouse: SKYTRAX_COMPUTE_MEDIUM
 
 ## Local Airflow (Astronomer)
 
-The `dbt-dags/` directory contains an Astronomer project with a symlink to the dbt project — no code duplication.
+The `dbt-dags/` directory contains an Astronomer project. The dbt project is mounted into the container via `docker-compose.override.yml`.
 
 ```bash
 cd dbt-dags
 astro dev start
 ```
 
-The DAG runs dbt models via the `cosmos` Airflow provider.
+- **Airflow UI**: <http://localhost:8082> (webserver) or <http://localhost:8083> (API server)
+- **Postgres**: localhost:5433
+- **DAG**: `skytrax_dbt_transformation` — runs all dbt models as `PROD_DBT` user via the `cosmos` provider
+- **Snowflake connection**: configured in `dbt-dags/.env` via `AIRFLOW_CONN_SNOWFLAKE_DEFAULT`

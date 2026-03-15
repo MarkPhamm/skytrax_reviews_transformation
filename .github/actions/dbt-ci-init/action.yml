@@ -28,8 +28,8 @@ runs:
       uses: actions/cache@v4
       with:
         path: dbt_venv
-        key: dbt-venv-v2-${{ runner.os }}-py${{ inputs.python_version }}-${{ hashFiles('dbt/requirements.txt') }}
-        restore-keys: dbt-venv-v2-${{ runner.os }}-py${{ inputs.python_version }}-
+        key: dbt-venv-v3-${{ runner.os }}-py${{ inputs.python_version }}-${{ hashFiles('requirements.txt') }}
+        restore-keys: dbt-venv-v3-${{ runner.os }}-py${{ inputs.python_version }}-
 
     - name: Create venv and install dependencies
       if: steps.cache-venv.outputs.cache-hit != 'true'
@@ -38,7 +38,7 @@ runs:
         python -m venv dbt_venv
         source dbt_venv/bin/activate
         pip install --upgrade pip
-        pip install -r dbt/requirements.txt
+        pip install -r requirements.txt
 
     - name: dbt deps
       shell: bash
