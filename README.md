@@ -1,6 +1,6 @@
 # Skytrax Airline Reviews Data Transformation
 
-A modern data transformation and CI/CD pipeline for airline industry analytics, processing **100,000+ customer reviews** from **500+ airlines** via [Skytrax Airline Quality](https://www.airlinequality.com/). Built with **dbt**, **Snowflake**, **Terraform**, and **GitHub Actions**.
+A modern data transformation and CI/CD pipeline for airline industry analytics, processing **100,000+ customer reviews** from **500+ airlines** via [Skytrax Airline Quality](https://www.airlinequality.com/). Built with **dbt**, **Snowflake**, **Terraform**, **GitHub Actions**, **AWS S3**, **AWS IAM OIDC**, **AWS EC2**, **nginx**, **Apache Airflow (Astronomer)**, **SQLFluff**, and **Python**.
 
 ![image](https://github.com/user-attachments/assets/44063b8d-ad6b-45a3-b802-de5b449cc5d4)
 
@@ -8,7 +8,7 @@ A modern data transformation and CI/CD pipeline for airline industry analytics, 
 
 ## Project Structure
 
-```
+```text
 .
 ├── skytrax_transformation/     # dbt project (single source of truth)
 │   ├── models/
