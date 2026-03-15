@@ -91,6 +91,10 @@ Full documentation is auto-generated and hosted on CloudFront: **[Live dbt Docs]
 
 ![dbt docs lineage](assets/dbt/dbt_docs_lineage.png)
 
+### Schema Diagram
+
+![schema](data_model/schema.png)
+
 ## Snowflake Infrastructure
 
 All Snowflake resources are managed by Terraform — users, roles, grants, schemas, warehouses. No manual setup in the Snowflake UI.
