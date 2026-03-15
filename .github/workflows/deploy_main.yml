@@ -18,9 +18,11 @@ env:
   SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
   SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
   SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   S3_ARTIFACTS_BUCKET: ${{ secrets.S3_ARTIFACTS_BUCKET }}
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
@@ -40,6 +42,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
       - name: ci-init
         uses: ./.github/actions/dbt-ci-init
 
@@ -50,19 +58,45 @@ jobs:
           dbt debug --profiles-dir ./ --target staging
 
       # -----------------------------------------------------------------------
+      # Download production state (if exists)
+      # -----------------------------------------------------------------------
+      - name: Download production manifest from S3
+        id: prod_state
+        working-directory: ./skytrax_transformation
+        run: |
+          mkdir -p prod_state
+          if aws s3 cp s3://$S3_ARTIFACTS_BUCKET/manifests/manifest.json prod_state/manifest.json 2>/dev/null; then
+            echo "has_state=true" >> "$GITHUB_OUTPUT"
+            echo "Production manifest downloaded -- will use defer/favor-state"
+          else
+            echo "has_state=false" >> "$GITHUB_OUTPUT"
+            echo "No production manifest found -- will run full build"
+          fi
+
+      # -----------------------------------------------------------------------
       # Run models
       # -----------------------------------------------------------------------
-      - name: Run dim_date first
+      - name: Run dbt build (incremental with defer)
+        if: steps.prod_state.outputs.has_state == 'true'
         working-directory: ./skytrax_transformation
         run: |
           source ../dbt_venv/bin/activate
-          dbt run --profiles-dir ./ --target staging --select dim_date
+          dbt build \
+            --profiles-dir ./ \
+            --target staging \
+            --select state:modified+ \
+            --defer \
+            --favor-state \
+            --state prod_state
 
-      - name: Run remaining models
+      - name: Run dbt build (full -- no prior state)
+        if: steps.prod_state.outputs.has_state == 'false'
         working-directory: ./skytrax_transformation
         run: |
           source ../dbt_venv/bin/activate
-          dbt run --profiles-dir ./ --target staging --select staging+ --exclude dim_date
+          dbt seed --profiles-dir ./ --target staging
+          dbt run --profiles-dir ./ --target staging
+          dbt test --profiles-dir ./ --target staging
 
       # -----------------------------------------------------------------------
       # Generate and upload docs
@@ -82,13 +116,13 @@ jobs:
             --include "*.json"
 
       # -----------------------------------------------------------------------
-      # Upload production artifacts for slim CI
+      # Upload production artifacts for next deploy + slim CI
       # -----------------------------------------------------------------------
       - name: Upload manifest and run_results to S3
         working-directory: ./skytrax_transformation
         run: |
-          aws s3 cp target/manifest.json s3://$S3_ARTIFACTS_BUCKET/artifacts/manifest.json
-          aws s3 cp target/run_results.json s3://$S3_ARTIFACTS_BUCKET/artifacts/run_results.json
+          aws s3 cp target/manifest.json s3://$S3_ARTIFACTS_BUCKET/manifests/manifest.json
+          aws s3 cp target/run_results.json s3://$S3_ARTIFACTS_BUCKET/run_results/run_results.json
 
       # -----------------------------------------------------------------------
       # Notification (always runs)
