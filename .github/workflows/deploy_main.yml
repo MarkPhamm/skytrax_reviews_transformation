@@ -55,7 +55,7 @@ jobs:
         working-directory: ./skytrax_transformation
         run: |
           source ../dbt_venv/bin/activate
-          dbt debug --profiles-dir ./ --target staging
+          dbt debug --profiles-dir ./ --target prod
 
       # -----------------------------------------------------------------------
       # Download production state (if exists)
@@ -83,7 +83,7 @@ jobs:
           source ../dbt_venv/bin/activate
           dbt build \
             --profiles-dir ./ \
-            --target staging \
+            --target prod \
             --select state:modified+ \
             --defer \
             --favor-state \
@@ -94,8 +94,8 @@ jobs:
         working-directory: ./skytrax_transformation
         run: |
           source ../dbt_venv/bin/activate
-          dbt run --profiles-dir ./ --target staging
-          dbt test --profiles-dir ./ --target staging
+          dbt run --profiles-dir ./ --target prod
+          dbt test --profiles-dir ./ --target prod
 
       # -----------------------------------------------------------------------
       # Generate and upload docs
@@ -104,7 +104,7 @@ jobs:
         working-directory: ./skytrax_transformation
         run: |
           source ../dbt_venv/bin/activate
-          dbt docs generate --profiles-dir ./ --target staging
+          dbt docs generate --profiles-dir ./ --target prod
 
       - name: Upload dbt docs to S3
         working-directory: ./skytrax_transformation

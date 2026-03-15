@@ -49,7 +49,9 @@ output "schemas" {
   description = "Map of schema names created in the database"
   value = {
     raw         = snowflake_schema.raw.name
-    staging     = snowflake_schema.staging.name
+    source       = snowflake_schema.source.name
+    intermediate = snowflake_schema.intermediate.name
+    staging      = snowflake_schema.staging.name
     marts       = snowflake_schema.marts.name
     dev_minh    = snowflake_schema.dev_minh.name
     dev_gina    = snowflake_schema.dev_gina.name

@@ -33,12 +33,12 @@ models:
     # Config indicated by + and applies to all files under models/example/
     staging:
       +materialized: view
-      +schema: STAGING
+      +schema: SOURCE
       +enabled: true
       +tags: ['staging']
     intermediate:
       +materialized: view
-      +schema: STAGING
+      +schema: INTERMEDIATE
       +enabled: true
       +tags: ['intermediate']
     marts:

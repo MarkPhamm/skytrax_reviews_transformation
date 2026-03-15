@@ -13,6 +13,19 @@ ba_transformation:
       warehouse: SKYTRAX_COMPUTE_XSMALL
       client_session_keep_alive: False
 
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
+      database: SKYTRAX_REVIEWS_DB
+      schema: SOURCE
+      threads: 10
+      warehouse: SKYTRAX_COMPUTE_MEDIUM
+      client_session_keep_alive: False
+      query_tag: github_action_deploy
+
     staging:
       type: snowflake
       account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
@@ -22,6 +35,6 @@ ba_transformation:
       database: SKYTRAX_REVIEWS_DB
       schema: STAGING
       threads: 10
-      warehouse: SKYTRAX_COMPUTE_MEDIUM
+      warehouse: SKYTRAX_COMPUTE_SMALL
       client_session_keep_alive: False
-      query_tag: github_action_query
+      query_tag: github_action_ci

@@ -39,7 +39,7 @@ The project uses two GitHub Actions workflows for continuous integration and dep
 
 4. **Artifact Upload**: After a successful build, the new manifest and run results are uploaded to S3 for the next deploy cycle:
 
-   ```
+   ```text
    s3://<bucket>/manifests/manifest.json
    s3://<bucket>/run_results/run_results.json
    s3://<bucket>/docs/            # dbt docs site

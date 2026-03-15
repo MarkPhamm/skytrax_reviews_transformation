@@ -52,10 +52,22 @@ resource "snowflake_schema" "raw" {
   comment  = "Raw seed data loaded by dbt seeds"
 }
 
+resource "snowflake_schema" "source" {
+  database = snowflake_database.skytrax.name
+  name     = "SOURCE"
+  comment  = "Production staging/intermediate models -- cleaned and standardized views"
+}
+
+resource "snowflake_schema" "intermediate" {
+  database = snowflake_database.skytrax.name
+  name     = "INTERMEDIATE"
+  comment  = "Production intermediate models -- business logic transformations"
+}
+
 resource "snowflake_schema" "staging" {
   database = snowflake_database.skytrax.name
   name     = "STAGING"
-  comment  = "Staging models -- cleaned and standardized views"
+  comment  = "CI scratch schema -- used only during PR checks"
 }
 
 resource "snowflake_schema" "marts" {
@@ -194,8 +206,10 @@ locals {
   # Production schemas the transformer role needs read/write access to
   prod_schemas = {
     raw     = snowflake_schema.raw.name
-    staging = snowflake_schema.staging.name
-    marts   = snowflake_schema.marts.name
+    source       = snowflake_schema.source.name
+    intermediate = snowflake_schema.intermediate.name
+    staging      = snowflake_schema.staging.name
+    marts        = snowflake_schema.marts.name
   }
 
   # Per-user dev schemas
