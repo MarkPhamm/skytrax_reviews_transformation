@@ -1,5 +1,5 @@
 name: "dbt CI Init"
-description: "Checkout, Python venv (cached), dbt deps, and optional artifact downloads."
+description: "Checkout, Python venv, dbt deps, and optional artifact downloads."
 
 inputs:
   python_version:
@@ -22,12 +22,6 @@ runs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python_version }}
-
-    - name: Cache pip packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: pip-${{ runner.os }}-py${{ inputs.python_version }}-${{ hashFiles('requirements.txt') }}
 
     - name: Create venv and install dependencies
       shell: bash
