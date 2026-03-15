@@ -33,14 +33,14 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "dbt_artifacts" {
   }
 }
 
-# Block all public access -- these artifacts are internal only
+# Block public ACLs but allow bucket policies (needed for public manifest read)
 resource "aws_s3_bucket_public_access_block" "dbt_artifacts" {
   bucket = aws_s3_bucket.dbt_artifacts.id
 
   block_public_acls       = true
-  block_public_policy     = true
+  block_public_policy     = false # Allow public read policy on manifests/ prefix
   ignore_public_acls      = true
-  restrict_public_buckets = true
+  restrict_public_buckets = false # Allow public read policy on manifests/ prefix
 }
 
 # Clean up old artifact versions after 30 days to save storage costs

@@ -184,6 +184,7 @@ cython_debug/
 **/target/
 **/dbt_packages/
 **/logs/
+**/prod_state/
 /configuration.env
 /.cursor
 /.vscode

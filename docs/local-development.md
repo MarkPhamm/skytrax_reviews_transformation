@@ -45,6 +45,42 @@ dbt docs serve --profiles-dir ./     # serve docs locally
 
 ---
 
+## Local Defer Builds (against production)
+
+Download the production manifest and run only your changed models locally,
+deferring unchanged models to production tables:
+
+```bash
+# Download production manifest (public, no credentials needed)
+mkdir -p dbt/prod_state
+curl -o dbt/prod_state/manifest.json \
+  https://skytrax-reviews-dbt-artifacts-203110101827.s3.amazonaws.com/manifests/manifest.json
+```
+
+Then run with `--defer --favor-state`:
+
+```bash
+cd dbt
+dbt run \
+  --select state:modified+ \
+  --defer \
+  --favor-state \
+  --state prod_state \
+  --profiles-dir ./
+```
+
+This is the same pattern the CD pipeline uses — only rebuild what you
+changed, reference production for everything else.
+
+**Tip:** Add an alias to your `~/.zshrc` so you can fetch the manifest
+with a single command:
+
+```bash
+alias get_dbt_manifest='mkdir -p ~/personal/project/skytrax_reviews_transformation/dbt/prod_state && curl -o ~/personal/project/skytrax_reviews_transformation/dbt/prod_state/manifest.json https://skytrax-reviews-dbt-artifacts-203110101827.s3.amazonaws.com/manifests/manifest.json'
+```
+
+---
+
 ## SQL Linting
 
 Linting is configured in `setup.cfg` at the project root using SQLFluff with the dbt templater.
