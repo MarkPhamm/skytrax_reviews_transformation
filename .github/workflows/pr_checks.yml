@@ -73,6 +73,10 @@ jobs:
           # Parse current project
           dbt parse --profiles-dir ./ --target staging
 
+          # Check if macro files changed in this PR
+          BASE_SHA=$(git merge-base ${{ github.sha }} origin/main)
+          MACRO_CHANGES=$(git diff --name-only "$BASE_SHA" ${{ github.sha }} -- "macros/" | wc -l | xargs)
+
           # Use merge-base manifest to find changed/new models
           dbt ls \
             --profiles-dir ./ \
@@ -84,11 +88,25 @@ jobs:
             --quiet \
             > changed_models.txt 2>/dev/null || true
 
+          # If macros changed but no models were detected, select all models
+          # (macro changes affect dependent models but dbt state comparison
+          # may not always catch them)
+          CHANGED=$(tr '\n' ' ' < changed_models.txt | xargs)
+          if [ -z "$CHANGED" ] && [ "$MACRO_CHANGES" -gt 0 ]; then
+            echo "Macro files changed but no models detected -- selecting all models"
+            dbt ls \
+              --profiles-dir ./ \
+              --resource-type model \
+              --output name \
+              --target staging \
+              --quiet \
+              > changed_models.txt 2>/dev/null || true
+            CHANGED=$(tr '\n' ' ' < changed_models.txt | xargs)
+          fi
+
           echo "---- Changed models ----"
           cat changed_models.txt || true
 
-          # Build space-separated string for downstream jobs
-          CHANGED=$(tr '\n' ' ' < changed_models.txt | xargs)
           echo "changed_models=$CHANGED" >> "$GITHUB_OUTPUT"
 
           if [ -n "$CHANGED" ]; then
