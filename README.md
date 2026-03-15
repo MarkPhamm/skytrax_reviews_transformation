@@ -25,9 +25,14 @@ A modern data transformation and CI/CD pipeline for airline industry analytics, 
 │   └── Dockerfile
 ├── terraform/
 │   ├── snowflake/              # Snowflake RBAC, users, warehouses, schemas
-│   └── aws/                    # S3 artifacts, VPC, EC2 dbt docs hosting
-├── .github/workflows/
-│   └── cicd.yml                # CI/CD pipeline
+│   └── aws/                    # S3 artifacts, OIDC, VPC, EC2 docs hosting
+├── .github/
+│   ├── workflows/
+│   │   ├── deploy_main.yml     # CD: build, deploy, upload artifacts
+│   │   └── pr_checks.yml       # CI: lint, compile, run, test changed models
+│   └── actions/
+│       └── dbt-ci-init/        # Composite action: Python, venv, dbt deps
+├── docs/                       # Project documentation
 ├── data/                       # Raw CSV data
 ├── notebooks/                  # Snowflake analysis notebooks
 ├── setup.cfg                   # SQLFluff linting config
@@ -45,6 +50,7 @@ A modern data transformation and CI/CD pipeline for airline industry analytics, 
 | Orchestration | Apache Airflow (Astronomer) |
 | Infrastructure | Terraform (AWS + Snowflake) |
 | CI/CD | GitHub Actions |
+| Authentication | AWS OIDC (keyless) |
 | Linting | SQLFluff |
 | Docs Hosting | EC2 + nginx |
 | Artifact Storage | S3 |
@@ -88,154 +94,114 @@ source (raw.skytrax_reviews)
 
 ## CI/CD Pipeline
 
-### Workflow Triggers
+See [docs/cicd.md](docs/cicd.md) for full details.
 
-| Trigger | When |
-|---------|------|
-| Push | Merge to `main` |
-| Pull Request | PR opened against `main` |
-| Schedule | Every Monday 00:00 UTC |
-| Manual | `workflow_dispatch` |
+### Continuous Deployment (merge to `main`)
 
-### Pipeline Steps
+Uses **defer/favor-state** for incremental deploys — only modified models and their downstream dependencies are rebuilt:
 
 ```
-1. Checkout code
-2. Set up Python 3.12 + install dependencies
-3. dbt deps → dbt debug (staging target)
-4. dbt run --target staging (dim_date first, then remaining models)
-5. dbt docs generate → upload to S3 (/docs/)
-6. Upload manifest.json + run_results.json to S3 (/artifacts/)
-7. Email notification with status
+1. Checkout code + configure AWS via OIDC
+2. Download production manifest from S3 (if exists)
+3. dbt build --select state:modified+ --defer --favor-state --state prod_state
+4. Generate and upload dbt docs to S3
+5. Upload manifest + run_results to S3 for next deploy
+6. Email notification
 ```
 
-The pipeline uses the **staging** target (writes to `STAGING` schema in Snowflake), keeping `DEV` for local development and `MARTS` for production.
+Falls back to a full build if no prior manifest exists (first run).
 
-### Slim CI (State Comparison)
+### Continuous Integration (pull requests)
 
-After each successful run, `manifest.json` is uploaded to S3. This enables **slim CI** on PRs — only modified models and their downstream dependencies are built:
+Uses **merge-base state comparison** — only changed models are linted, compiled, run, and tested:
 
-```bash
-dbt build --select state:modified+ --state ./artifacts/
 ```
-
-### dbt Docs Hosting
-
-dbt docs are auto-published on every merge to `main`:
-1. CI generates docs and syncs to S3
-2. EC2 instance (nginx) pulls from S3 every 5 minutes
-3. Docs are served at `http://<ec2-public-ip>`
+1. Build merge-base manifest (state baseline from main)
+2. Detect changed models (state:modified + state:new)
+3. Lint changed SQL files with SQLFluff
+4. Compile changed models
+5. Run changed models with --defer to base state
+6. Test changed models with --defer to base state
+```
 
 ---
 
-## Infrastructure (Terraform)
+## Infrastructure
+
+See [docs/infrastructure.md](docs/infrastructure.md) for full details.
 
 ### Snowflake (`terraform/snowflake/`)
 
-| Resource | Purpose |
+| Resource | Details |
 |----------|---------|
-| Roles | `TRANSFORMER` (CI/CD), `ANALYST` (read-only), `ADMIN` |
-| Users | Created with passwords, assigned to roles |
-| Schemas | RAW, STAGING, MARTS, DEV |
-| Grants | Future grants on tables/views for automatic permission inheritance |
-| Warehouses | COMPUTE_WH for transformations |
+| Database | `SKYTRAX_REVIEWS_DB` |
+| Warehouses | 5 sizes: `SKYTRAX_COMPUTE_XSMALL` through `XLARGE` |
+| Production Schemas | `RAW`, `STAGING`, `MARTS` |
+| Dev Schemas | `DEV_MINH`, `DEV_GINA`, `DEV_VICIENT` (per-user) |
+| Roles | `SKYTRAX_ADMIN` > `SKYTRAX_TRANSFORMER` + `SKYTRAX_ANALYST` |
+| Service Accounts | `PROD_DBT`, `DBT_CICD` (transformer role) |
+| Analyst Users | `GINA_ANALYST`, `VICIENT_ANALYST` (analyst role) |
 
 ### AWS (`terraform/aws/`)
 
-| File | Resources |
-|------|-----------|
-| `s3.tf` | Artifacts bucket (versioned, encrypted, lifecycle rules) |
-| `vpc.tf` | VPC, public subnet, internet gateway, route table |
-| `iam.tf` | IAM role + instance profile for EC2 → S3 access |
-| `ec2.tf` | t3.micro running nginx, security group (HTTP + SSH) |
-
-### Setup
-
-```bash
-# Snowflake
-cd terraform/snowflake
-cp terraform.tfvars.example terraform.tfvars  # fill in credentials
-terraform init && terraform plan && terraform apply
-
-# AWS
-cd terraform/aws
-cp terraform.tfvars.example terraform.tfvars  # fill in credentials
-terraform init && terraform plan && terraform apply
-```
+| Resource | Purpose |
+|----------|---------|
+| S3 Bucket | dbt artifacts (manifests, run_results, docs) — versioned, encrypted |
+| OIDC Provider | GitHub Actions keyless authentication |
+| IAM Role | CI/CD role with S3 read/write (assumed via OIDC) |
 
 ---
 
 ## Local Development
 
-### Prerequisites
+See [docs/local-development.md](docs/local-development.md) for full details.
 
-- Python 3.12+
-- dbt-snowflake
-- Snowflake account with appropriate permissions
-
-### Setup
+### Quick Start
 
 ```bash
 # 1. Install dependencies
 pip install -r requirements.txt
 
 # 2. Set Snowflake env vars
-export SNOWFLAKE_ACCOUNT='your-account'
+export SNOWFLAKE_ACCOUNT='nvnjoib-on80344'
 export SNOWFLAKE_USER='your-user'
 export SNOWFLAKE_PASSWORD='your-password'
-export SNOWFLAKE_ROLE='your-role'
+export SNOWFLAKE_ROLE='SKYTRAX_TRANSFORMER'
 
 # 3. Run dbt
 cd skytrax_transformation
-dbt deps
+dbt deps --profiles-dir ./
 dbt debug --profiles-dir ./
-dbt run --profiles-dir ./         # uses dev target (DEV schema)
+dbt run --profiles-dir ./         # uses dev target (your DEV_* schema)
 dbt test --profiles-dir ./
-dbt docs generate --profiles-dir ./
-dbt docs serve --profiles-dir ./
 ```
 
 ### SQL Linting
-
-Linting is configured in `setup.cfg` (SQLFluff with dbt templater):
-- All SQL lowercase (keywords, functions, identifiers)
-- Trailing commas
-- Shorthand casting (`::`)
-- Explicit column aliases
 
 ```bash
 sqlfluff lint models/
 sqlfluff fix models/
 ```
 
-### Local Airflow (Astronomer)
-
-The `dbt-dags/` directory symlinks to the root dbt project — no code duplication.
-
-```bash
-cd dbt-dags
-astro dev start
-```
-
 ---
 
-## GitHub Secrets Required
+## GitHub Secrets
 
 | Secret | Description |
 |--------|-------------|
-| `SNOWFLAKE_ACCOUNT` | Snowflake account identifier |
-| `SNOWFLAKE_USER` | Snowflake username |
-| `SNOWFLAKE_PASSWORD` | Snowflake password |
-| `SNOWFLAKE_ROLE` | Snowflake role |
-| `SNOWFLAKE_SCHEMA` | Target schema |
-| `AWS_ACCESS_KEY_ID` | AWS access key for S3 uploads |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key |
-| `S3_ARTIFACTS_BUCKET` | S3 bucket name for artifacts/docs |
-| `EMAIL_USERNAME` | Gmail address for notifications |
+| `SNOWFLAKE_ACCOUNT` | `nvnjoib-on80344` |
+| `SNOWFLAKE_USER` | `DBT_CICD` |
+| `SNOWFLAKE_PASSWORD` | Password for DBT_CICD user |
+| `SNOWFLAKE_ROLE` | `SKYTRAX_TRANSFORMER` |
+| `SNOWFLAKE_SCHEMA` | `STAGING` |
+| `AWS_ROLE_ARN` | IAM role ARN for OIDC (from `terraform output`) |
+| `S3_ARTIFACTS_BUCKET` | S3 bucket name for artifacts |
+| `EMAIL_USERNAME` | Gmail address for deploy notifications |
 | `EMAIL_PASSWORD` | Gmail app password |
 
 ---
 
 ## Workflow Status
 
-[![BA Transformation](https://github.com/MarkPhamm/skytrax_reviews_transformation/actions/workflows/cicd.yml/badge.svg)](https://github.com/MarkPhamm/skytrax_reviews_transformation/actions/workflows/cicd.yml)
+[![Deploy Main](https://github.com/MarkPhamm/skytrax_reviews_transformation/actions/workflows/deploy_main.yml/badge.svg)](https://github.com/MarkPhamm/skytrax_reviews_transformation/actions/workflows/deploy_main.yml)
+[![PR Checks](https://github.com/MarkPhamm/skytrax_reviews_transformation/actions/workflows/pr_checks.yml/badge.svg)](https://github.com/MarkPhamm/skytrax_reviews_transformation/actions/workflows/pr_checks.yml)
