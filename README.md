@@ -1,6 +1,6 @@
 # Skytrax Reviews Transformation & CI/CD Pipeline (Part 2)
 
-<img src="assets/airlines.png" width="100%">
+<img src="assets/airlines.png" alt="airlines" width="100%">
 
 At Insurify, I run `dbt build --defer --favor-state` every day and curl the production manifest from S3 before every CI run — but I never fully understood what was happening under the hood. How does the manifest get there? Who uploads it? How does OIDC actually work? Why do we need a separate CI schema?
 
@@ -35,16 +35,16 @@ This project is my attempt to build all of that from scratch. I spent a full day
                                    ▼
                     ┌──────────────────────────────┐
                     │   INTERMEDIATE schema        │
-                    │   int_reviews_cleaned (view)  │
+                    │   int_reviews_cleaned (view) │
                     └──────────────┬───────────────┘
                                    │
                     ┌──────┬───────┼───────┬───────┐
                     ▼      ▼       ▼       ▼       ▼
                 ┌──────────────────────────────────────┐
                 │   MARTS schema                       │
-                │   dim_customer  dim_airline           │
-                │   dim_aircraft  dim_location          │
-                │   dim_date      fct_review            │
+                │   dim_customer  dim_airline          │
+                │   dim_aircraft  dim_location         │
+                │   dim_date      fct_review           │
                 └──────────────────────────────────────┘
                                    │
                     ┌──────────────┼──────────────┐
@@ -77,7 +77,7 @@ Follows **Kimball star schema** methodology with deterministic surrogate keys (`
 **Grain**: one row per customer review per flight.
 
 | Model | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `fct_review` | Fact | Review metrics, ratings, calculated averages, and rating bands |
 | `dim_customer` | Dimension | Reviewer identity and flight count |
 | `dim_airline` | Dimension | Airline name |
@@ -98,7 +98,7 @@ All Snowflake resources are managed by Terraform — users, roles, grants, schem
 ### Schema Layout
 
 | Schema | Purpose | Target |
-|--------|---------|--------|
+| -------- | --------- | -------- |
 | `RAW` | Raw source data (seeds, external loads) | one-off |
 | `SOURCE` | Staging views — 1:1 source mirrors | prod |
 | `INTERMEDIATE` | Cleaned/normalized business logic | prod |
@@ -113,7 +113,7 @@ Every user, role, and grant is defined in Terraform. Analysts get read-only acce
 ![snowflake users](assets/snowflake/snowflake_users.png)
 
 | Resource | Details |
-|----------|---------|
+| ---------- | --------- |
 | Database | `SKYTRAX_REVIEWS_DB` |
 | Warehouses | 5 sizes: `SKYTRAX_COMPUTE_XSMALL` through `XLARGE` |
 | Roles | `SKYTRAX_ADMIN` > `SKYTRAX_TRANSFORMER` + `SKYTRAX_ANALYST` |
@@ -135,7 +135,7 @@ dbt docs are served globally via CloudFront with Origin Access Control — the S
 ![cloudfront docs](assets/aws/cloudfont_dbt_docs.png)
 
 | Resource | Purpose |
-|----------|---------|
+| ---------- | --------- |
 | S3 Bucket | dbt artifacts (manifests, run_results, docs) — versioned, encrypted |
 | CloudFront | CDN for dbt docs hosting (free tier, no server needed) |
 | OIDC Provider | GitHub Actions keyless authentication |
@@ -254,7 +254,7 @@ setup.cfg                   SQLFluff config
 ## GitHub Secrets
 
 | Secret | Description |
-|--------|-------------|
+| -------- | ------------- |
 | `SNOWFLAKE_ACCOUNT` | `nvnjoib-on80344` |
 | `SNOWFLAKE_USER` | `DBT_CICD` |
 | `SNOWFLAKE_PASSWORD` | Password for DBT_CICD user |
