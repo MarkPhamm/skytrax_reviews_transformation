@@ -94,7 +94,6 @@ jobs:
         working-directory: ./skytrax_transformation
         run: |
           source ../dbt_venv/bin/activate
-          dbt seed --profiles-dir ./ --target staging
           dbt run --profiles-dir ./ --target staging
           dbt test --profiles-dir ./ --target staging
 
