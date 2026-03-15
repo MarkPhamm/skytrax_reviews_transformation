@@ -10,7 +10,7 @@ ba_transformation:
       database: SKYTRAX_REVIEWS_DB
       schema: DEV_MARK
       threads: 10
-      warehouse: COMPUTE_WH
+      warehouse: SKYTRAX_COMPUTE_XSMALL
       client_session_keep_alive: False
 
     staging:
@@ -22,6 +22,6 @@ ba_transformation:
       database: SKYTRAX_REVIEWS_DB
       schema: STAGING
       threads: 10
-      warehouse: COMPUTE_WH
+      warehouse: SKYTRAX_COMPUTE_MEDIUM
       client_session_keep_alive: False
       query_tag: github_action_query
