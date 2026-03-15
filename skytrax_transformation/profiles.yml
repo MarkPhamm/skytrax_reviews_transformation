@@ -8,7 +8,7 @@ ba_transformation:
       password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
       role: "{{ env_var('SNOWFLAKE_ROLE') }}"
       database: SKYTRAX_REVIEWS_DB
-      schema: DEV
+      schema: DEV_MARK
       threads: 10
       warehouse: COMPUTE_WH
       client_session_keep_alive: False
