@@ -1,67 +1,77 @@
-# Skytrax Airline Reviews Data Transformation
-
-A modern data transformation and CI/CD pipeline for airline industry analytics, processing **100,000+ customer reviews** from **500+ airlines** via [Skytrax Airline Quality](https://www.airlinequality.com/). Built with **dbt**, **Snowflake**, **Terraform**, **GitHub Actions**, **AWS S3**, **AWS IAM OIDC**, **AWS EC2**, **nginx**, **Apache Airflow (Astronomer)**, **SQLFluff**, and **Python**.
+# Skytrax Reviews Transformation & CI/CD Pipeline (Part 2)
 
 ![image](https://github.com/user-attachments/assets/44063b8d-ad6b-45a3-b802-de5b449cc5d4)
 
----
+At Insurify, I run `dbt build --defer --favor-state` every day and curl the production manifest from S3 before every CI run — but I never fully understood what was happening under the hood. How does the manifest get there? Who uploads it? How does OIDC actually work? Why do we need a separate CI schema?
 
-## Project Structure
+This project is my attempt to build all of that from scratch. I spent a full day setting up a proper CI/CD pipeline and local dev environment for a small team of 3 analysts — configuring slim CI with merge-base state comparison, uploading manifests to S3 after every deploy, hosting dbt docs on EC2 behind a VPC, wiring up OIDC so GitHub Actions never touches a static AWS credential, and managing Snowflake RBAC with Terraform so each analyst gets their own dev schema.
+
+[Part 1 (Extract-Load)](https://github.com/MarkPhamm/skytrax_reviews_extract_load) scrapes 160,000+ airline reviews from AirlineQuality.com and loads them into Snowflake. This project picks up where that left off — transforming raw reviews into a star schema, with full CI/CD, Infrastructure as Code, and orchestration.
+
+- **Star schema** — Kimball methodology with 5 dimensions and 1 fact table, deterministic surrogate keys
+- **Slim CI** — only changed models are linted, compiled, run, and tested on PRs via merge-base state comparison
+- **Incremental CD** — `--defer --favor-state` deploys only modified models + downstream, falls back to full build on first run
+- **Keyless auth** — GitHub Actions authenticates to AWS via OIDC, no static credentials
+- **Infrastructure as Code** — Snowflake RBAC, warehouses, schemas, and AWS resources all managed by Terraform
+- **Per-user dev schemas** — each developer gets their own isolated schema for local dbt development
+
+## Architecture
 
 ```text
-.
-├── dbt/     # dbt project (single source of truth)
-│   ├── models/
-│   │   ├── staging/            # 1:1 source mirrors (views)
-│   │   ├── intermediate/       # Cleaned/normalized business logic
-│   │   └── marts/              # Star schema dims + facts (tables)
-│   ├── macros/                 # Custom dbt macros
-│   ├── tests/                  # Data quality tests
-│   └── profiles.yml            # Snowflake connection (env vars, no secrets)
-├── dbt-dags/                   # Astronomer/Airflow orchestration
-│   ├── dags/
-│   │   ├── transformation_dag.py
-│   │   └── dbt/ -> ../../dbt  (symlink)
-│   └── Dockerfile
-├── terraform/
-│   ├── snowflake/              # Snowflake RBAC, users, warehouses, schemas
-│   └── aws/                    # S3 artifacts, OIDC, VPC, EC2 docs hosting
-├── .github/
-│   ├── workflows/
-│   │   ├── deploy_main.yml     # CD: build, deploy, upload artifacts
-│   │   └── pr_checks.yml       # CI: lint, compile, run, test changed models
-│   └── actions/
-│       └── dbt-ci-init/        # Composite action: Python, venv, dbt deps
-├── docs/                       # Project documentation
-├── data/                       # Raw CSV data
-├── notebooks/                  # Snowflake analysis notebooks
-├── setup.cfg                   # SQLFluff linting config
-└── requirements.txt
+                    ┌──────────────────────────────┐
+                    │   Snowflake                  │
+                    │   SKYTRAX_REVIEWS_DB.RAW     │
+                    │   .AIRLINE_REVIEWS           │
+                    │   (from Part 1)              │
+                    └──────────────┬───────────────┘
+                                   │ dbt source
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │   SOURCE schema              │
+                    │   stg__skytrax_reviews (view) │
+                    └──────────────┬───────────────┘
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │   INTERMEDIATE schema        │
+                    │   int_reviews_cleaned (view)  │
+                    └──────────────┬───────────────┘
+                                   │
+                    ┌──────┬───────┼───────┬───────┐
+                    ▼      ▼       ▼       ▼       ▼
+                ┌──────────────────────────────────────┐
+                │   MARTS schema                       │
+                │   dim_customer  dim_airline          │
+                │   dim_aircraft  dim_location         │
+                │   dim_date      fct_review           │
+                └──────────────────────────────────────┘
+                                   │
+                    ┌──────────────┼──────────────┐
+                    ▼              ▼              ▼
+               GitHub Actions   Airflow       BI Tools
+               (CI/CD)         (scheduling)   (analytics)
 ```
 
----
+## Stack
 
-## Technology Stack
-
-| Layer | Tool |
-|-------|------|
+| Layer | Technology |
+| ----- | ---------- |
 | Data Warehouse | Snowflake |
 | Transformation | dbt (dbt-snowflake) |
-| Orchestration | Apache Airflow (Astronomer) |
-| Infrastructure | Terraform (AWS + Snowflake) |
-| CI/CD | GitHub Actions |
-| Authentication | AWS OIDC (keyless) |
+| Orchestration | Apache Airflow (Astronomer, cosmos) |
+| IaC | Terraform (AWS + Snowflake) |
+| CI/CD | GitHub Actions (slim CI, defer/favor-state CD) |
+| Auth | AWS IAM OIDC (keyless) |
+| Artifact Storage | AWS S3 (manifests, run_results, docs) |
+| Docs Hosting | AWS EC2 + nginx |
 | Linting | SQLFluff |
-| Docs Hosting | EC2 + nginx |
-| Artifact Storage | S3 |
-
----
+| Language | SQL, Python 3.12, Jinja |
 
 ## Data Model
 
 ### Star Schema
 
-The project follows **Kimball star schema** methodology with deterministic surrogate keys (`dbt_utils.generate_surrogate_key`).
+Follows **Kimball star schema** methodology with deterministic surrogate keys (`dbt_utils.generate_surrogate_key`).
 
 **Grain**: one row per customer review per flight.
 
@@ -76,7 +86,7 @@ The project follows **Kimball star schema** methodology with deterministic surro
 
 ### DAG Flow
 
-```
+```text
 source (raw.skytrax_reviews)
   └── stg__skytrax_reviews (SOURCE schema, view)
         └── int_reviews_cleaned (INTERMEDIATE schema, view)
@@ -85,12 +95,21 @@ source (raw.skytrax_reviews)
               ├── dim_aircraft
               ├── dim_location
               ├── dim_date (macro-generated, one_time_run tag)
-              └── fct_review (joins all dimensions, calculates average_rating + rating_band)
+              └── fct_review (joins all dimensions)
 ```
 
 ![schema](https://github.com/user-attachments/assets/f6276b06-9f03-410a-b2cc-785b0a23b8f2)
 
----
+## Snowflake Schema Layout
+
+| Schema | Purpose | Target |
+|--------|---------|--------|
+| `RAW` | Raw source data (seeds, external loads) | one-off |
+| `SOURCE` | Staging views — 1:1 source mirrors | prod |
+| `INTERMEDIATE` | Cleaned/normalized business logic | prod |
+| `MARTS` | Star schema dims + facts | prod |
+| `STAGING` | CI scratch space (all models flat) | CI only |
+| `DEV_*` | Per-user dev schemas | local dev |
 
 ## CI/CD Pipeline
 
@@ -100,7 +119,7 @@ See [docs/cicd.md](docs/cicd.md) for full details.
 
 Uses **defer/favor-state** for incremental deploys — only modified models and their downstream dependencies are rebuilt:
 
-```
+```text
 1. Checkout code + configure AWS via OIDC
 2. Download production manifest from S3 (if exists)
 3. dbt build --select state:modified+ --defer --favor-state --state prod_state
@@ -115,7 +134,7 @@ Falls back to a full build if no prior manifest exists (first run).
 
 Uses **merge-base state comparison** — only changed models are linted, compiled, run, and tested:
 
-```
+```text
 1. Build merge-base manifest (state baseline from main)
 2. Detect changed models (state:modified + state:new)
 3. Lint changed SQL files with SQLFluff
@@ -123,8 +142,6 @@ Uses **merge-base state comparison** — only changed models are linted, compile
 5. Run changed models with --defer to base state
 6. Test changed models with --defer to base state
 ```
-
----
 
 ## Infrastructure
 
@@ -136,9 +153,6 @@ See [docs/infrastructure.md](docs/infrastructure.md) for full details.
 |----------|---------|
 | Database | `SKYTRAX_REVIEWS_DB` |
 | Warehouses | 5 sizes: `SKYTRAX_COMPUTE_XSMALL` through `XLARGE` |
-| Production Schemas | `RAW`, `SOURCE`, `INTERMEDIATE`, `MARTS` |
-| CI Schema | `STAGING` (scratch space for PR checks) |
-| Dev Schemas | `DEV_MINH`, `DEV_GINA`, `DEV_VICIENT` (per-user) |
 | Roles | `SKYTRAX_ADMIN` > `SKYTRAX_TRANSFORMER` + `SKYTRAX_ANALYST` |
 | Service Accounts | `PROD_DBT`, `DBT_CICD` (transformer role) |
 | Analyst Users | `GINA_ANALYST`, `VICIENT_ANALYST` (analyst role) |
@@ -151,40 +165,77 @@ See [docs/infrastructure.md](docs/infrastructure.md) for full details.
 | OIDC Provider | GitHub Actions keyless authentication |
 | IAM Role | CI/CD role with S3 read/write (assumed via OIDC) |
 
----
+## Getting Started
 
-## Local Development
+Follow these guides in order:
 
-See [docs/local-development.md](docs/local-development.md) for full details.
+### 1. [Infrastructure Setup](docs/infrastructure.md)
 
-### Quick Start
+Provision Snowflake RBAC, warehouses, schemas, and AWS resources with Terraform.
+
+### 2. [Local Development](docs/local-development.md)
+
+Set up your dev environment, run dbt locally, and start the Airflow scheduler.
+
+### 3. [CI/CD Pipeline](docs/cicd.md)
+
+Configure GitHub secrets, understand the slim CI and defer/favor-state CD workflows.
+
+## Quick Reference
 
 ```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+# Install dependencies (local dev)
+pip install -r requirements-dev.txt
 
-# 2. Set Snowflake env vars
-export SNOWFLAKE_ACCOUNT='nvnjoib-on80344'
-export SNOWFLAKE_USER='your-user'
-export SNOWFLAKE_PASSWORD='your-password'
-export SNOWFLAKE_ROLE='SKYTRAX_TRANSFORMER'
+# Set Snowflake env vars
+export SNOWFLAKE_ACCOUNT=nvnjoib-on80344
+export SNOWFLAKE_USER=your_user
+export SNOWFLAKE_PASSWORD=your_password
+export SNOWFLAKE_ROLE=SKYTRAX_ANALYST
+export SNOWFLAKE_SCHEMA=DEV_your_name
 
-# 3. Run dbt
+# Run dbt
 cd dbt
 dbt deps --profiles-dir ./
 dbt debug --profiles-dir ./
-dbt run --profiles-dir ./         # uses dev target (your DEV_* schema)
-dbt test --profiles-dir ./
+dbt run --profiles-dir ./
+
+# Start Airflow
+cd dbt-dags
+astro dev start
+
+# Infrastructure
+cd terraform/snowflake && terraform init && terraform apply
+cd terraform/aws && terraform init && terraform apply
 ```
 
-### SQL Linting
+## Directory Layout
 
-```bash
-sqlfluff lint models/
-sqlfluff fix models/
+```text
+dbt/                        dbt project
+  models/
+    staging/                1:1 source mirrors (views)
+    intermediate/           Cleaned business logic (views)
+    marts/                  Star schema dims + facts (tables)
+  macros/                   generate_schema_name, generate_dates_dimension
+  profiles.yml              Snowflake connection (env vars)
+dbt-dags/                   Astronomer/Airflow project
+  dags/
+    transformation_dag.py   cosmos DbtDag (PROD_DBT user)
+terraform/
+  snowflake/                RBAC, users, warehouses, schemas
+  aws/                      S3, OIDC, IAM, VPC, EC2
+.github/
+  workflows/
+    deploy_main.yml         CD: defer/favor-state deploy
+    pr_checks.yml           CI: slim CI on changed models
+  actions/
+    dbt-ci-init/            Composite action: Python, venv, dbt deps
+docs/                       Setup guides
+requirements.txt            CI dependencies (dbt, sqlfluff)
+requirements-dev.txt        Local dev dependencies (+ pandas, ipykernel)
+setup.cfg                   SQLFluff config
 ```
-
----
 
 ## GitHub Secrets
 
@@ -198,8 +249,6 @@ sqlfluff fix models/
 | `S3_ARTIFACTS_BUCKET` | S3 bucket name for artifacts |
 | `EMAIL_USERNAME` | Gmail address for deploy notifications |
 | `EMAIL_PASSWORD` | Gmail app password |
-
----
 
 ## Workflow Status
 

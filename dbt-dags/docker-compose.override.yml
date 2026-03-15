@@ -1,0 +1,14 @@
+version: "3.1"
+services:
+  scheduler:
+    volumes:
+      - ../dbt:/usr/local/airflow/dags/dbt:ro
+  dag-processor:
+    volumes:
+      - ../dbt:/usr/local/airflow/dags/dbt:ro
+  api-server:
+    volumes:
+      - ../dbt:/usr/local/airflow/dags/dbt:ro
+  triggerer:
+    volumes:
+      - ../dbt:/usr/local/airflow/dags/dbt:ro
