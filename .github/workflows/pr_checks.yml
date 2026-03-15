@@ -214,7 +214,13 @@ jobs:
           download_changed_models: "true"
           download_base_manifest: "true"
 
-      - name: Run changed models (deferred)
+      - name: Clone production tables to staging
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt run-operation clone_prod_to_staging --profiles-dir ./ --target staging
+
+      - name: Run changed models
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
@@ -225,8 +231,6 @@ jobs:
             dbt run \
               --profiles-dir ./ \
               --select $MODELS \
-              --defer \
-              --state base_state \
               --target staging \
               --fail-fast
           else
@@ -234,7 +238,7 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # Job 5: Test changed models with --defer to base state
+  # Job 5: Test changed models
   # ---------------------------------------------------------------------------
   test_changed:
     name: Test Changed Models
@@ -252,9 +256,8 @@ jobs:
         uses: ./.github/actions/dbt-ci-init
         with:
           download_changed_models: "true"
-          download_base_manifest: "true"
 
-      - name: Test changed models (deferred)
+      - name: Test changed models
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
@@ -265,15 +268,13 @@ jobs:
             dbt test \
               --profiles-dir ./ \
               --select $MODELS \
-              --defer \
-              --state base_state \
               --target staging
           else
             echo "No changed models to test."
           fi
 
   # ---------------------------------------------------------------------------
-  # Job 6: Run downstream models of changed models with --defer
+  # Job 6: Run downstream models of changed models
   # ---------------------------------------------------------------------------
   run_downstream:
     name: Run Downstream Models
@@ -291,9 +292,8 @@ jobs:
         uses: ./.github/actions/dbt-ci-init
         with:
           download_changed_models: "true"
-          download_base_manifest: "true"
 
-      - name: Run downstream models (deferred)
+      - name: Run downstream models
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
@@ -314,8 +314,6 @@ jobs:
               --profiles-dir ./ \
               --select $SELECT_ARGS \
               --exclude $EXCLUDE_ARGS \
-              --defer \
-              --state base_state \
               --target staging \
               --fail-fast
           else
@@ -323,7 +321,7 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # Job 7: Test downstream models of changed models with --defer
+  # Job 7: Test downstream models of changed models
   # ---------------------------------------------------------------------------
   test_downstream:
     name: Test Downstream Models
@@ -341,9 +339,8 @@ jobs:
         uses: ./.github/actions/dbt-ci-init
         with:
           download_changed_models: "true"
-          download_base_manifest: "true"
 
-      - name: Test downstream models (deferred)
+      - name: Test downstream models
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
@@ -362,8 +359,6 @@ jobs:
               --profiles-dir ./ \
               --select $SELECT_ARGS \
               --exclude $EXCLUDE_ARGS \
-              --defer \
-              --state base_state \
               --target staging
           else
             echo "No changed models — skipping downstream tests."
