@@ -2,250 +2,31 @@ version: 2
 
 models:
   - name: fct_review
-    description: This table contains detailed review information including customer, dates, locations, aircraft, and review metrics.
+    description: |
+      Review fact table combining all review metrics with enrichments.
+      Includes calculated average ratings and categorical rating bands.
+      All foreign keys reference conformed dimensions.
+      Grain: one row per review submission.
     columns:
-      - name: review_id
-        description: Unique identifier for each review.
+      - name: review_key
+        description: Surrogate key for the review fact (deterministic, idempotent).
         tests:
           - unique
           - not_null
-
-        config:
-          meta:
-            datatypes: integer
-      - name: customer_id
-        description: Unique identifier for each customer.
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_customer')
-                field: customer_id
-        config:
-          meta:
-            datatypes: integer
-      - name: date_submitted_id
-        description: Unique identifier for the date the review was submitted. If null, defaults to 2015-01-01.
-        tests:
-          - not_null:
-              config:
-                severity: warn
-                error_if: ">100"
-                warn_if: ">0"
-          - relationships:
-              arguments:
-                to: ref('dim_date')
-                field: date_id
-        config:
-          meta:
-            datatypes: integer
-      - name: date_flown_id
-        description: Unique identifier for the date the flight was taken.
-        tests:
-    # - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_date')
-                field: date_id
-        config:
-          meta:
-            datatypes: integer
-      - name: origin_location_id
-        description: Unique identifier for the origin location.
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_location')
-                field: location_id
-        config:
-          meta:
-            datatypes: integer
-      - name: destination_location_id
-        description: Unique identifier for the destination location.
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_location')
-                field: location_id
-        config:
-          meta:
-            datatypes: integer
-      - name: transit_location_id
-        description: Unique identifier for the transit location.
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_location')
-                field: location_id
-        config:
-          meta:
-            datatypes: integer
-      - name: aircraft_id
-        description: Unique identifier for the aircraft.
-        tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('dim_aircraft')
-                field: aircraft_id
-        config:
-          meta:
-            datatypes: integer
-      - name: verified
-        description: Indicates if the review is verified.
-        tests:
-          - accepted_values:
-              arguments:
-                values: [true, false]
-
-        config:
-          meta:
-            datatypes: boolean
-      - name: seat_type
-        description: The type of seat in the review.
-        tests:
-          - accepted_values:
-              arguments:
-                values: ['Premium Economy', 'Business Class', 'Economy Class', 'First Class']
-
         config:
           meta:
             datatypes: string
-      - name: type_of_traveller
-        description: The type of traveller in the review.
-        tests:
-          - accepted_values:
-              arguments:
-                values: ['Business', 'Couple Leisure', 'Family Leisure', 'Solo Leisure', null]
 
-        config:
-          meta:
-            datatypes: string
-      - name: seat_comfort
-        description: Rating for seat comfort.
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 5
-        config:
-          meta:
-            datatypes: integer
-      - name: cabin_staff_service
-        description: Rating for cabin staff service.
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 5
-        config:
-          meta:
-            datatypes: integer
-      - name: food_and_beverages
-        description: Rating for food and beverages.
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 5
-        config:
-          meta:
-            datatypes: integer
-      - name: inflight_entertainment
-        description: Rating for inflight entertainment.
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 5
-        config:
-          meta:
-            datatypes: integer
-      - name: ground_service
-        description: Rating for ground service.
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 5
-        config:
-          meta:
-            datatypes: integer
-      - name: wifi_and_connectivity
-        description: Rating for wifi and connectivity.
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 5
-        config:
-          meta:
-            datatypes: integer
-      - name: value_for_money
-        description: Rating for value for money.
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between:
-              arguments:
-                min_value: 0
-                max_value: 5
-        config:
-          meta:
-            datatypes: integer
-      - name: recommended
-        description: Indicates if the reviewer recommends the airline.
-        tests:
-          - accepted_values:
-              arguments:
-                values: [true, false]
-
-        config:
-          meta:
-            datatypes: boolean
-      - name: review_text
-        description: The text of the review.
-        config:
-          meta:
-            datatypes: string
-      - name: el_updated_at
-        description: Timestamp indicating when the record was last updated from the EL pipeline
-        tests:
-          - not_null
-
-        config:
-          meta:
-            datatypes: timestamp
-      - name: t_updated_at
-        description: Timestamp indicating when the record was last updated from the Transformation pipeline
-        tests:
-          - not_null
-
-        config:
-          meta:
-            datatypes: timestamp
-    config:
-      meta:
-        contracts:
-          enabled: true
-# -----------------------------------------------------------------------------------------------------
-  - name: fct_review_enriched
-    description: |
-      Enriched review fact table. Adds the calculated average rating across the
-      seven sub-rating metrics and a categorical rating band. All other columns
-      are identical to fct_review.
-    columns:
-  # --- keys and foreign-keys (unchanged) ---
       - name: review_id
-        description: Unique identifier for each review.
-        tests: [unique, not_null]
+        description: Original review identifier from source system.
+        tests:
+          - not_null
         config:
           meta:
             datatypes: integer
 
       - name: customer_id
-        description: Unique identifier for each customer.
+        description: Foreign key to dim_customer.
         tests:
           - not_null
           - relationships:
@@ -254,9 +35,22 @@ models:
                 field: customer_id
         config:
           meta:
-            datatypes: integer
+            datatypes: string
+
+      - name: airline_id
+        description: Foreign key to dim_airline.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_airline')
+                field: airline_id
+        config:
+          meta:
+            datatypes: string
+
       - name: date_submitted_id
-        description: Unique identifier for the date the review was submitted.
+        description: Foreign key to dim_date (submission date).
         tests:
           - not_null
           - relationships:
@@ -265,9 +59,10 @@ models:
                 field: date_id
         config:
           meta:
-            datatypes: integer
+            datatypes: date
+
       - name: date_flown_id
-        description: Unique identifier for the date the flight was taken.
+        description: Foreign key to dim_date (flight date).
         tests:
           - relationships:
               arguments:
@@ -275,9 +70,10 @@ models:
                 field: date_id
         config:
           meta:
-            datatypes: integer
+            datatypes: date
+
       - name: origin_location_id
-        description: Unique identifier for the origin location.
+        description: Foreign key to dim_location (origin).
         tests:
           - not_null
           - relationships:
@@ -286,9 +82,10 @@ models:
                 field: location_id
         config:
           meta:
-            datatypes: integer
+            datatypes: string
+
       - name: destination_location_id
-        description: Unique identifier for the destination location.
+        description: Foreign key to dim_location (destination).
         tests:
           - not_null
           - relationships:
@@ -297,9 +94,10 @@ models:
                 field: location_id
         config:
           meta:
-            datatypes: integer
+            datatypes: string
+
       - name: transit_location_id
-        description: Unique identifier for the transit location.
+        description: Foreign key to dim_location (transit stop).
         tests:
           - not_null
           - relationships:
@@ -308,9 +106,10 @@ models:
                 field: location_id
         config:
           meta:
-            datatypes: integer
+            datatypes: string
+
       - name: aircraft_id
-        description: Unique identifier for the aircraft.
+        description: Foreign key to dim_aircraft.
         tests:
           - not_null
           - relationships:
@@ -319,138 +118,170 @@ models:
                 field: aircraft_id
         config:
           meta:
-            datatypes: integer
-      - name: verified
-        description: Indicates if the review is verified.
-        tests:
-          - accepted_values: {arguments: {values: [true, false]}}
+            datatypes: string
 
-        config:
-          meta:
-            datatypes: boolean
-      - name: seat_type
-        description: The type of seat in the review.
+      - name: is_verified
+        description: Whether the review was verified by the airline.
         tests:
           - accepted_values:
               arguments:
-                values: ['Premium Economy', 'Business Class', 'Economy Class', 'First Class']
+                values: [true, false, null]
+        config:
+          meta:
+            datatypes: boolean
 
+      - name: seat_type
+        description: Type of seat purchased (Premium Economy, Business Class, Economy Class, First Class).
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Premium Economy', 'Business Class', 'Economy Class', 'First Class', null]
         config:
           meta:
             datatypes: string
+
       - name: type_of_traveller
-        description: The type of traveller in the review.
+        description: Category of traveller (Business, Couple Leisure, Family Leisure, Solo Leisure).
         tests:
           - accepted_values:
               arguments:
                 values: ['Business', 'Couple Leisure', 'Family Leisure', 'Solo Leisure', null]
-
-  # --- sub-ratings (unchanged) ---
         config:
           meta:
             datatypes: string
+
       - name: seat_comfort
-        description: Rating for seat comfort.
+        description: Seat comfort rating (1-5 scale, null allowed).
         tests:
-          - dbt_expectations.expect_column_values_to_be_between: {arguments: {min_value: 0, max_value: 5}}
-
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 5
+              row_condition: "seat_comfort is not null"
         config:
           meta:
             datatypes: integer
+
       - name: cabin_staff_service
-        description: Rating for cabin staff service.
+        description: Cabin staff service rating (1-5 scale, null allowed).
         tests:
-          - dbt_expectations.expect_column_values_to_be_between: {arguments: {min_value: 0, max_value: 5}}
-
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 5
+              row_condition: "cabin_staff_service is not null"
         config:
           meta:
             datatypes: integer
+
       - name: food_and_beverages
-        description: Rating for food and beverages.
+        description: Food and beverages rating (1-5 scale, null allowed).
         tests:
-          - dbt_expectations.expect_column_values_to_be_between: {arguments: {min_value: 0, max_value: 5}}
-
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 5
+              row_condition: "food_and_beverages is not null"
         config:
           meta:
             datatypes: integer
+
       - name: inflight_entertainment
-        description: Rating for inflight entertainment.
+        description: Inflight entertainment rating (1-5 scale, null allowed).
         tests:
-          - dbt_expectations.expect_column_values_to_be_between: {arguments: {min_value: 0, max_value: 5}}
-
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 5
+              row_condition: "inflight_entertainment is not null"
         config:
           meta:
             datatypes: integer
+
       - name: ground_service
-        description: Rating for ground service.
+        description: Ground service rating (1-5 scale, null allowed).
         tests:
-          - dbt_expectations.expect_column_values_to_be_between: {arguments: {min_value: 0, max_value: 5}}
-
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 5
+              row_condition: "ground_service is not null"
         config:
           meta:
             datatypes: integer
+
       - name: wifi_and_connectivity
-        description: Rating for wifi and connectivity.
+        description: WiFi and connectivity rating (1-5 scale, null allowed).
         tests:
-          - dbt_expectations.expect_column_values_to_be_between: {arguments: {min_value: 0, max_value: 5}}
-
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 5
+              row_condition: "wifi_and_connectivity is not null"
         config:
           meta:
             datatypes: integer
+
       - name: value_for_money
-        description: Rating for value for money.
+        description: Value for money rating (1-5 scale, null allowed).
         tests:
-          - dbt_expectations.expect_column_values_to_be_between: {arguments: {min_value: 0, max_value: 5}}
-
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 5
+              row_condition: "value_for_money is not null"
         config:
           meta:
             datatypes: integer
-      - name: recommended
-        description: Indicates if the reviewer recommends the airline.
-        tests:
-          - accepted_values: {arguments: {values: [true, false]}}
 
-  # --- new calculated columns ---
+      - name: recommended
+        description: Whether the reviewer recommends the airline.
+        tests:
+          - accepted_values:
+              arguments:
+                values: [true, false, null]
         config:
           meta:
             datatypes: boolean
-      - name: average_rating
-        description: >
-          Mean of the seven sub-ratings, computed across non-null values. Range 0–5; null if all sub-ratings are null. Round to 2 decimals
-        tests:
-          - dbt_expectations.expect_column_values_to_be_between: {arguments: {min_value: 0, max_value: 5}}
 
+      - name: average_rating
+        description: |
+          Calculated average rating across all seven sub-ratings.
+          Computed using only non-null sub-ratings. Range 0–5; null if all sub-ratings null.
+          Rounded to 2 decimal places.
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 5
+              row_condition: "average_rating is not null"
         config:
           meta:
             datatypes: numeric
+
       - name: rating_band
-        description: >
-          Categorical band derived from average_rating: 0–<2 → bad, 2–<4 → medium, 4–5 → good. 'Unknown' if average_rating is null.
+        description: |
+          Categorical band derived from average_rating.
+          Bands: 'bad' (0–<2), 'medium' (2–<4), 'good' (4–5), 'unknown' (null).
         tests:
           - not_null
           - accepted_values:
               arguments:
-                values: ['bad', 'medium', 'good', 'Unknown']
-  # --- end of new metrics ------
+                values: ['bad', 'medium', 'good', 'unknown']
+        config:
+          meta:
+            datatypes: string
 
-        config:
-          meta:
-            datatypes: string
       - name: review_text
-        description: The text of the review.
+        description: Full text of the review comment.
         config:
           meta:
             datatypes: string
-      - name: el_updated_at
-        description: Timestamp indicating when the record was last updated from the EL pipeline.
-        tests: [not_null]
+
+      - name: source_updated_at
+        description: Timestamp when the record was last updated in the source system.
+        tests:
+          - not_null
         config:
           meta:
             datatypes: timestamp
 
-      - name: t_updated_at
-        description: Timestamp indicating when the record was last updated from the Transformation pipeline.
-        tests: [not_null]
+      - name: dbt_loaded_at
+        description: Timestamp when the record was loaded by dbt.
+        tests:
+          - not_null
         config:
           meta:
             datatypes: timestamp
@@ -459,43 +290,51 @@ models:
       meta:
         contracts:
           enabled: true
-# -----------------------------------------------------------------------------------------------------
+
+# ---
+
   - name: dim_location
-    description: This table contains distinct locations (city and airport) derived from the reviews.
+    description: |
+      Location dimension table combining origin, destination, and transit airports.
+      Grain: one row per unique (city, airport) combination.
     columns:
       - name: location_id
-        description: Unique identifier for each location.
+        description: Surrogate key for location (deterministic, idempotent).
         tests:
           - unique
           - not_null
-
         config:
           meta:
-            datatypes: integer
+            datatypes: string
+
       - name: city
-        description: The city of the location.
+        description: City name (e.g., New York, London).
         tests:
           - not_null
-
         config:
           meta:
             datatypes: string
+
       - name: airport
-        description: The airport of the location.
+        description: Airport code (e.g., JFK, LHR).
         tests:
           - not_null
-
         config:
           meta:
             datatypes: string
+
     config:
       meta:
         contracts:
           enabled: true
 
-# -----------------------------------------------------------------------------------------------------
+# ---
+
   - name: dim_date
-    description: This table contains a date dimension starting from 2015-01-01.
+    description: |
+      Date dimension table spanning from 2015-01-01.
+      Includes calendar and financial period attributes.
+      Grain: one row per calendar date.
     columns:
       - name: date_id
         description: Surrogate key representing each calendar date.
@@ -504,59 +343,70 @@ models:
           - not_null
         config:
           meta:
-            datatypes: integer
+            datatypes: date
+
       - name: day_of_week
-        description: Numeric day of the week (e.g., 1 = Monday).
+        description: Numeric day of the week (1=Monday).
         config:
           meta:
             datatypes: integer
+
       - name: day_of_week_name
-        description: Name of the day of the week.
+        description: Full name of the day of the week (Monday, Tuesday, etc.).
         config:
           meta:
             datatypes: string
+
       - name: cal_week_start_date
         description: Start date of the calendar week (usually Monday).
         config:
           meta:
             datatypes: date
+
       - name: day_of_month
-        description: Day of the month.
+        description: Day of the month (1-31).
         config:
           meta:
             datatypes: integer
+
       - name: cal_month
         description: Calendar month as integer (1-12).
         config:
           meta:
             datatypes: integer
+
       - name: cal_mon_name
-        description: Full name of the calendar month.
+        description: Full name of the calendar month (January, February, etc.).
         config:
           meta:
             datatypes: string
+
       - name: cal_mon_name_short
-        description: Abbreviated name of the calendar month.
+        description: Abbreviated month name (Jan, Feb, etc.).
         config:
           meta:
             datatypes: string
+
       - name: cal_quarter
-        description: Calendar quarter number.
+        description: Calendar quarter number (1-4).
         config:
           meta:
             datatypes: integer
+
       - name: cal_quarter_name
-        description: Name of the calendar quarter (e.g., Q1).
+        description: Quarter name (Q1, Q2, Q3, Q4).
         config:
           meta:
             datatypes: string
+
       - name: cal_year
-        description: Calendar year.
+        description: Calendar year (4-digit).
         config:
           meta:
             datatypes: integer
+
       - name: is_weekend
-        description: Indicates if the date falls on a weekend.
+        description: Boolean flag for weekend days (Saturday, Sunday).
         tests:
           - accepted_values:
               arguments:
@@ -564,116 +414,165 @@ models:
         config:
           meta:
             datatypes: boolean
+
       - name: fin_year
-        description: Financial year associated with the date.
+        description: Financial year (fiscal year starting July 1).
         config:
           meta:
             datatypes: integer
+
       - name: fin_period
-        description: Financial period number.
+        description: Financial period number within fiscal year.
         config:
           meta:
             datatypes: integer
+
       - name: fin_quarter
-        description: Financial quarter number.
+        description: Financial quarter number within fiscal year.
         config:
           meta:
             datatypes: integer
+
       - name: fin_week
-        description: Financial week number.
+        description: Financial week number within fiscal year.
         config:
           meta:
             datatypes: integer
+
       - name: fin_period_name
-        description: Name of the financial period.
+        description: Financial period name (e.g., p1, p2, ..., p12).
         config:
           meta:
             datatypes: string
+
       - name: fin_quarter_name
-        description: Name of the financial quarter.
+        description: Financial quarter name (e.g., FQ1, FQ2, FQ3, FQ4).
         config:
           meta:
             datatypes: string
+
       - name: fin_week_name
-        description: Name of the financial week.
+        description: Financial week name (e.g., wk1, wk2, ..., wk52).
         config:
           meta:
             datatypes: string
+
     config:
       meta:
         contracts:
           enabled: true
-# -----------------------------------------------------------------------------------------------------
+      tags:
+        - one_time_run
+
+# ---
+
   - name: dim_aircraft
-    description: This table contains distinct aircraft models and their details derived from the reviews.
+    description: |
+      Aircraft dimension table with manufacturer and capacity attributes.
+      Grain: one row per unique aircraft model.
     columns:
       - name: aircraft_id
-        description: Unique identifier for each aircraft.
+        description: Surrogate key for aircraft (deterministic, idempotent).
         tests:
           - unique
           - not_null
-
         config:
           meta:
-            datatypes: integer
+            datatypes: string
+
       - name: aircraft_model
-        description: The model of the aircraft.
+        description: Aircraft model name (e.g., Boeing 777, Airbus A380).
         tests:
           - not_null
+        config:
+          meta:
+            datatypes: string
 
-        config:
-          meta:
-            datatypes: string
       - name: aircraft_manufacturer
-        description: The manufacturer of the aircraft.
+        description: Aircraft manufacturer (Airbus, Boeing, Embraer, Saab, Unknown).
         config:
           meta:
             datatypes: string
+
       - name: seat_capacity
-        description: The seating capacity of the aircraft.
+        description: Maximum seating capacity of the aircraft.
         config:
           meta:
             datatypes: integer
+
     config:
       meta:
         contracts:
           enabled: true
 
-# -----------------------------------------------------------------------------------------------------
+# ---
+
   - name: dim_customer
-    description: This table contains distinct customers derived from the reviews.
+    description: |
+      Customer dimension table aggregating reviews by customer identity.
+      Grain: one row per unique (customer_name, nationality) combination.
+      Includes denormalized review count.
     columns:
       - name: customer_id
-        description: Unique identifier for each customer.
+        description: Surrogate key for customer (deterministic, idempotent).
         tests:
           - unique
           - not_null
-
         config:
           meta:
-            datatypes: integer
+            datatypes: string
+
       - name: customer_name
-        description: The name of the customer. If null, defaults to 'Unknown'.
+        description: Name of the customer. 'Unknown' for missing values.
         tests:
-          - not_null:
-              config:
-                severity: warn
-                error_if: ">5"
-                warn_if: ">0"
+          - not_null
+        config:
+          meta:
+            datatypes: string
 
-        config:
-          meta:
-            datatypes: string
       - name: nationality
-        description: The nationality of the customer. If null, defaults to 'Unknown'.
+        description: Nationality of the customer. 'Unknown' for missing values.
+        tests:
+          - not_null
         config:
           meta:
             datatypes: string
+
       - name: number_of_flights
-        description: The number of flights taken by the customer.
+        description: Count of reviews (flights) associated with this customer.
         config:
           meta:
             datatypes: integer
+
+    config:
+      meta:
+        contracts:
+          enabled: true
+
+# ---
+
+  - name: dim_airline
+    description: |
+      Airline dimension table.
+      Grain: one row per unique airline.
+    columns:
+      - name: airline_id
+        description: Surrogate key for airline (deterministic, idempotent).
+        tests:
+          - unique
+          - not_null
+        config:
+          meta:
+            datatypes: string
+
+      - name: airline_name
+        description: Name of the airline.
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: string
+
     config:
       meta:
         contracts:
