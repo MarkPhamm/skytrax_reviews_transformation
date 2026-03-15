@@ -1,0 +1,110 @@
+name: Deploy Main
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 0 * * 1" # Every Monday at 00:00 UTC
+  workflow_dispatch:
+
+# Only one deploy at a time
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+  SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+  SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  S3_ARTIFACTS_BUCKET: ${{ secrets.S3_ARTIFACTS_BUCKET }}
+
+jobs:
+  deploy:
+    name: Build, Docs & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Setup
+      # -----------------------------------------------------------------------
+      - name: Get current timestamp
+        id: timestamp
+        run: echo "time=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_OUTPUT"
+
+      - name: ci-init
+        uses: ./.github/actions/dbt-ci-init
+
+      - name: Verify Snowflake connection
+        working-directory: ./skytrax_transformation
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt debug --profiles-dir ./ --target staging
+
+      # -----------------------------------------------------------------------
+      # Run models
+      # -----------------------------------------------------------------------
+      - name: Run dim_date first
+        working-directory: ./skytrax_transformation
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt run --profiles-dir ./ --target staging --select dim_date
+
+      - name: Run remaining models
+        working-directory: ./skytrax_transformation
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt run --profiles-dir ./ --target staging --select staging+ --exclude dim_date
+
+      # -----------------------------------------------------------------------
+      # Generate and upload docs
+      # -----------------------------------------------------------------------
+      - name: Generate dbt docs
+        working-directory: ./skytrax_transformation
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt docs generate --profiles-dir ./ --target staging
+
+      - name: Upload dbt docs to S3
+        working-directory: ./skytrax_transformation
+        run: |
+          aws s3 sync target/ s3://$S3_ARTIFACTS_BUCKET/docs/ \
+            --delete \
+            --include "*.html" \
+            --include "*.json"
+
+      # -----------------------------------------------------------------------
+      # Upload production artifacts for slim CI
+      # -----------------------------------------------------------------------
+      - name: Upload manifest and run_results to S3
+        working-directory: ./skytrax_transformation
+        run: |
+          aws s3 cp target/manifest.json s3://$S3_ARTIFACTS_BUCKET/artifacts/manifest.json
+          aws s3 cp target/run_results.json s3://$S3_ARTIFACTS_BUCKET/artifacts/run_results.json
+
+      # -----------------------------------------------------------------------
+      # Notification (always runs)
+      # -----------------------------------------------------------------------
+      - name: Send email notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Skytrax Deploy - ${{ job.status }}"
+          to: minh.b.pham@tcu.edu
+          from: ${{ secrets.EMAIL_USERNAME }}
+          body: |
+            Skytrax Transformation Deploy Report
+
+            Run Time: ${{ steps.timestamp.outputs.time }}
+            Triggered by: ${{ github.event_name }}
+            Status: ${{ job.status }}
+
+            Repository: ${{ github.repository }}
+            Workflow Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

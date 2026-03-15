@@ -1,0 +1,66 @@
+name: "dbt CI Init"
+description: "Checkout, Python venv (cached), dbt deps, and optional artifact downloads."
+
+inputs:
+  python_version:
+    description: "Python version for the venv"
+    default: "3.12"
+    required: false
+  download_base_manifest:
+    description: "Download base_manifest artifact to ./base_state"
+    default: "false"
+    required: false
+  download_changed_models:
+    description: "Download changed_models artifact"
+    default: "false"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python_version }}
+
+    - name: Cache pip/venv
+      id: cache-venv
+      uses: actions/cache@v4
+      with:
+        path: dbt_venv
+        key: dbt-venv-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+        restore-keys: dbt-venv-${{ runner.os }}-
+
+    - name: Create venv and install dependencies
+      if: steps.cache-venv.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        python -m venv dbt_venv
+        source dbt_venv/bin/activate
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: dbt deps
+      shell: bash
+      working-directory: ./skytrax_transformation
+      run: |
+        source ../dbt_venv/bin/activate
+        dbt deps --profiles-dir ./
+
+    - name: Download changed_models artifact
+      if: inputs.download_changed_models == 'true'
+      uses: actions/download-artifact@v4
+      with:
+        name: changed_models
+
+    - name: Download base_manifest artifact
+      if: inputs.download_base_manifest == 'true'
+      uses: actions/download-artifact@v4
+      with:
+        name: base_manifest
+        path: skytrax_transformation/base_state

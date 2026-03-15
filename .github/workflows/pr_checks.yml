@@ -1,0 +1,231 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+  SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+  SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Build merge-base manifest and detect changed models
+  # ---------------------------------------------------------------------------
+  setup_env:
+    name: Setup & Detect Changes
+    runs-on: ubuntu-latest
+
+    outputs:
+      changed_models: ${{ steps.diff.outputs.changed_models }}
+      has_changes: ${{ steps.diff.outputs.has_changes }}
+
+    steps:
+      - name: ci-init
+        uses: ./.github/actions/dbt-ci-init
+
+      - name: Build merge-base manifest (state baseline)
+        working-directory: ./skytrax_transformation
+        run: |
+          source ../dbt_venv/bin/activate
+
+          # Compute merge-base with main
+          BASE_SHA=$(git merge-base ${{ github.sha }} origin/main)
+          echo "Using BASE_SHA=$BASE_SHA as state baseline"
+
+          # Materialize the base tree into a sibling folder
+          mkdir -p ../../dbt_base
+          git archive "$BASE_SHA" | tar -x -C ../../dbt_base
+
+          # Parse the baseline project to produce its manifest
+          cd ../../dbt_base/skytrax_transformation
+          source ../../skytrax_reviews_transformation/dbt_venv/bin/activate
+          dbt deps --profiles-dir ./
+          dbt parse --profiles-dir ./ --target staging
+
+          # Copy manifest back for state comparison
+          cd ../../skytrax_reviews_transformation/skytrax_transformation
+          mkdir -p base_state
+          cp ../../dbt_base/skytrax_transformation/target/manifest.json base_state/manifest.json
+
+      - name: Detect changed models
+        id: diff
+        working-directory: ./skytrax_transformation
+        run: |
+          source ../dbt_venv/bin/activate
+
+          # Parse current project
+          dbt parse --profiles-dir ./ --target staging
+
+          # Use merge-base manifest to find changed/new models
+          dbt ls \
+            --profiles-dir ./ \
+            --state base_state \
+            --resource-type model \
+            --select "state:modified" "state:new" \
+            --output name \
+            --target staging \
+            --quiet \
+            > changed_models.txt 2>/dev/null || true
+
+          echo "---- Changed models ----"
+          cat changed_models.txt || true
+
+          # Build space-separated string for downstream jobs
+          CHANGED=$(tr '\n' ' ' < changed_models.txt | xargs)
+          echo "changed_models=$CHANGED" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$CHANGED" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload base manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: base_manifest
+          path: skytrax_transformation/base_state/manifest.json
+          retention-days: 3
+
+      - name: Upload changed models list
+        uses: actions/upload-artifact@v4
+        with:
+          name: changed_models
+          path: skytrax_transformation/changed_models.txt
+          retention-days: 3
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Lint changed SQL files with sqlfluff
+  # ---------------------------------------------------------------------------
+  lint_sql:
+    name: Lint SQL
+    runs-on: ubuntu-latest
+    needs: setup_env
+
+    steps:
+      - name: ci-init
+        uses: ./.github/actions/dbt-ci-init
+
+      - name: Run sqlfluff on changed SQL files
+        run: |
+          source dbt_venv/bin/activate
+
+          BASE_SHA=$(git merge-base ${{ github.sha }} origin/main)
+          changed_files=$(git diff --name-only --diff-filter=AM "$BASE_SHA" ${{ github.sha }} -- "*.sql" | tr '\n' ' ')
+
+          if [ -n "$changed_files" ]; then
+            echo "Linting changed files: $changed_files"
+            sqlfluff lint $changed_files || true
+          else
+            echo "No changed SQL files to lint."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Compile changed models
+  # ---------------------------------------------------------------------------
+  compile_changed:
+    name: Compile Changed Models
+    runs-on: ubuntu-latest
+    needs: setup_env
+    if: needs.setup_env.outputs.has_changes == 'true'
+
+    steps:
+      - name: ci-init
+        uses: ./.github/actions/dbt-ci-init
+        with:
+          download_changed_models: "true"
+
+      - name: Compile changed models
+        working-directory: ./skytrax_transformation
+        run: |
+          source ../dbt_venv/bin/activate
+
+          MODELS="${{ needs.setup_env.outputs.changed_models }}"
+          if [ -n "$MODELS" ]; then
+            echo "Compiling: $MODELS"
+            dbt compile --profiles-dir ./ --select $MODELS --target staging
+          else
+            echo "No changed models to compile."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Run changed models with --defer to base state
+  # ---------------------------------------------------------------------------
+  run_changed:
+    name: Run Changed Models
+    runs-on: ubuntu-latest
+    needs: [setup_env, compile_changed]
+    if: needs.setup_env.outputs.has_changes == 'true'
+
+    steps:
+      - name: ci-init
+        uses: ./.github/actions/dbt-ci-init
+        with:
+          download_changed_models: "true"
+          download_base_manifest: "true"
+
+      - name: Run changed models (deferred)
+        working-directory: ./skytrax_transformation
+        run: |
+          source ../dbt_venv/bin/activate
+
+          MODELS="${{ needs.setup_env.outputs.changed_models }}"
+          if [ -n "$MODELS" ]; then
+            echo "Running: $MODELS"
+            dbt run \
+              --profiles-dir ./ \
+              --select $MODELS \
+              --defer \
+              --state base_state \
+              --target staging \
+              --fail-fast
+          else
+            echo "No changed models to run."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Job 5: Test changed models with --defer to base state
+  # ---------------------------------------------------------------------------
+  test_changed:
+    name: Test Changed Models
+    runs-on: ubuntu-latest
+    needs: [setup_env, run_changed]
+    if: needs.setup_env.outputs.has_changes == 'true'
+
+    steps:
+      - name: ci-init
+        uses: ./.github/actions/dbt-ci-init
+        with:
+          download_changed_models: "true"
+          download_base_manifest: "true"
+
+      - name: Test changed models (deferred)
+        working-directory: ./skytrax_transformation
+        run: |
+          source ../dbt_venv/bin/activate
+
+          MODELS="${{ needs.setup_env.outputs.changed_models }}"
+          if [ -n "$MODELS" ]; then
+            echo "Testing: $MODELS"
+            dbt test \
+              --profiles-dir ./ \
+              --select $MODELS \
+              --defer \
+              --state base_state \
+              --target staging
+          else
+            echo "No changed models to test."
+          fi
