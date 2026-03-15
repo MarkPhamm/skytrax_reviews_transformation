@@ -1,8 +1,6 @@
 # -----------------------------------------------------------------------------
 # Outputs
 # -----------------------------------------------------------------------------
-# These values are needed to configure CI/CD pipelines and access the docs.
-# -----------------------------------------------------------------------------
 
 output "artifacts_bucket_name" {
   description = "S3 bucket name for dbt artifacts"
@@ -14,24 +12,16 @@ output "artifacts_bucket_arn" {
   value       = aws_s3_bucket.dbt_artifacts.arn
 }
 
-output "docs_server_public_ip" {
-  description = "Public IP of the dbt docs server -- visit http://<this-ip> to view docs"
-  value       = aws_instance.docs_server.public_ip
+# --- CloudFront ---
+
+output "docs_cloudfront_domain" {
+  description = "CloudFront domain for dbt docs -- visit https://<this-domain> to view docs"
+  value       = aws_cloudfront_distribution.docs.domain_name
 }
 
-output "docs_server_public_dns" {
-  description = "Public DNS of the dbt docs server"
-  value       = aws_instance.docs_server.public_dns
-}
-
-output "vpc_id" {
-  description = "VPC ID"
-  value       = aws_vpc.main.id
-}
-
-output "public_subnet_id" {
-  description = "Public subnet ID"
-  value       = aws_subnet.public.id
+output "docs_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID -- used for cache invalidation in CD pipeline"
+  value       = aws_cloudfront_distribution.docs.id
 }
 
 # --- GitHub Actions OIDC ---

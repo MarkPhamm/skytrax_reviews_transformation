@@ -27,24 +27,7 @@ variable "artifacts_bucket_name" {
   type        = string
 }
 
-# --- EC2 ---
-
-variable "instance_type" {
-  description = "EC2 instance type for the dbt docs server"
-  type        = string
-  default     = "t3.micro"
-}
-
-variable "ssh_key_name" {
-  description = "Name of an existing EC2 key pair for SSH access to the docs server"
-  type        = string
-}
-
-variable "allowed_ssh_cidr" {
-  description = "CIDR block allowed to SSH into the docs server (e.g., your IP: 1.2.3.4/32)"
-  type        = string
-  default     = "0.0.0.0/0" # Restrict this in production!
-}
+# EC2 variables removed -- see ec2.tf.disabled
 
 # --- GitHub Actions OIDC ---
 
