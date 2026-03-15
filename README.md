@@ -1,10 +1,10 @@
 # Skytrax Reviews Transformation & CI/CD Pipeline (Part 2)
 
-![image](https://github.com/user-attachments/assets/44063b8d-ad6b-45a3-b802-de5b449cc5d4)
+![airlines](assets/airlines.png)
 
 At Insurify, I run `dbt build --defer --favor-state` every day and curl the production manifest from S3 before every CI run — but I never fully understood what was happening under the hood. How does the manifest get there? Who uploads it? How does OIDC actually work? Why do we need a separate CI schema?
 
-This project is my attempt to build all of that from scratch. I spent a full day setting up a proper CI/CD pipeline and local dev environment for a small team of 3 analysts — configuring slim CI with merge-base state comparison, uploading manifests to S3 after every deploy, hosting dbt docs on EC2 behind a VPC, wiring up OIDC so GitHub Actions never touches a static AWS credential, and managing Snowflake RBAC with Terraform so each analyst gets their own dev schema.
+This project is my attempt to build all of that from scratch. I spent a full day setting up a proper CI/CD pipeline and local dev environment for a small team of 3 analysts — configuring slim CI with merge-base state comparison, uploading manifests to S3 after every deploy, hosting dbt docs on CloudFront, wiring up OIDC so GitHub Actions never touches a static AWS credential, and managing every piece of Snowflake infrastructure (users, roles, schemas, warehouses, grants) through Terraform.
 
 [Part 1 (Extract-Load)](https://github.com/MarkPhamm/skytrax_reviews_extract_load) scrapes 160,000+ airline reviews from AirlineQuality.com and loads them into Snowflake. This project picks up where that left off — transforming raw reviews into a star schema, with full CI/CD, Infrastructure as Code, and orchestration.
 
@@ -12,8 +12,9 @@ This project is my attempt to build all of that from scratch. I spent a full day
 - **Slim CI** — only changed models are linted, compiled, run, and tested on PRs via merge-base state comparison
 - **Incremental CD** — `--defer --favor-state` deploys only modified models + downstream, falls back to full build on first run
 - **Keyless auth** — GitHub Actions authenticates to AWS via OIDC, no static credentials
-- **Infrastructure as Code** — Snowflake RBAC, warehouses, schemas, and AWS resources all managed by Terraform
+- **Full IaC** — Snowflake users, roles, grants, schemas, warehouses + AWS S3, CloudFront, OIDC — all managed by Terraform
 - **Per-user dev schemas** — each developer gets their own isolated schema for local dbt development
+- **dbt Docs** — auto-generated and hosted on CloudFront, updated on every deploy: [Live Docs](https://d38l3fc9bckvbz.cloudfront.net)
 
 ## Architecture
 
@@ -34,16 +35,16 @@ This project is my attempt to build all of that from scratch. I spent a full day
                                    ▼
                     ┌──────────────────────────────┐
                     │   INTERMEDIATE schema        │
-                    │   int_reviews_cleaned (view) │
+                    │   int_reviews_cleaned (view)  │
                     └──────────────┬───────────────┘
                                    │
                     ┌──────┬───────┼───────┬───────┐
                     ▼      ▼       ▼       ▼       ▼
                 ┌──────────────────────────────────────┐
                 │   MARTS schema                       │
-                │   dim_customer  dim_airline          │
-                │   dim_aircraft  dim_location         │
-                │   dim_date      fct_review           │
+                │   dim_customer  dim_airline           │
+                │   dim_aircraft  dim_location          │
+                │   dim_date      fct_review            │
                 └──────────────────────────────────────┘
                                    │
                     ┌──────────────┼──────────────┐
@@ -84,23 +85,17 @@ Follows **Kimball star schema** methodology with deterministic surrogate keys (`
 | `dim_location` | Dimension | City + airport (role-playing: origin, destination, transit) |
 | `dim_date` | Dimension | Calendar + fiscal dates (role-playing: submitted, flown) |
 
-### DAG Flow
+### dbt Docs & Lineage Graph
 
-```text
-source (raw.skytrax_reviews)
-  └── stg__skytrax_reviews (SOURCE schema, view)
-        └── int_reviews_cleaned (INTERMEDIATE schema, view)
-              ├── dim_customer (MARTS schema, table)
-              ├── dim_airline
-              ├── dim_aircraft
-              ├── dim_location
-              ├── dim_date (macro-generated, one_time_run tag)
-              └── fct_review (joins all dimensions)
-```
+Full documentation is auto-generated and hosted on CloudFront: **[Live dbt Docs](https://d38l3fc9bckvbz.cloudfront.net)**
 
-![schema](https://github.com/user-attachments/assets/f6276b06-9f03-410a-b2cc-785b0a23b8f2)
+![dbt docs lineage](assets/dbt/dbt_docs_lineage.png)
 
-## Snowflake Schema Layout
+## Snowflake Infrastructure
+
+All Snowflake resources are managed by Terraform — users, roles, grants, schemas, warehouses. No manual setup in the Snowflake UI.
+
+### Schema Layout
 
 | Schema | Purpose | Target |
 |--------|---------|--------|
@@ -110,6 +105,41 @@ source (raw.skytrax_reviews)
 | `MARTS` | Star schema dims + facts | prod |
 | `STAGING` | CI scratch space (all models flat) | CI only |
 | `DEV_*` | Per-user dev schemas | local dev |
+
+### Users & RBAC
+
+Every user, role, and grant is defined in Terraform. Analysts get read-only access to `MARTS` plus write access to their own dev schema. Service accounts (`PROD_DBT`, `DBT_CICD`) use the transformer role for production and CI.
+
+![snowflake users](assets/snowflake/snowflake_users.png)
+
+| Resource | Details |
+|----------|---------|
+| Database | `SKYTRAX_REVIEWS_DB` |
+| Warehouses | 5 sizes: `SKYTRAX_COMPUTE_XSMALL` through `XLARGE` |
+| Roles | `SKYTRAX_ADMIN` > `SKYTRAX_TRANSFORMER` + `SKYTRAX_ANALYST` |
+| Service Accounts | `PROD_DBT`, `DBT_CICD` (transformer role) |
+| Analyst Users | `GINA_ANALYST`, `VICIENT_ANALYST` (analyst role) |
+
+## AWS Infrastructure
+
+### S3 Artifacts
+
+dbt manifests, run results, and docs are stored in a versioned, encrypted S3 bucket. The CD pipeline uploads after every deploy; the CI pipeline downloads the production manifest for state comparison.
+
+![s3 artifacts](assets/aws/s3_dbt_aritfacts_bucket.png)
+
+### CloudFront (dbt Docs)
+
+dbt docs are served globally via CloudFront with Origin Access Control — the S3 bucket stays private, CloudFront handles HTTPS and caching. Cache is invalidated on every deploy so docs are always up to date.
+
+![cloudfront docs](assets/aws/cloudfont_dbt_docs.png)
+
+| Resource | Purpose |
+|----------|---------|
+| S3 Bucket | dbt artifacts (manifests, run_results, docs) — versioned, encrypted |
+| CloudFront | CDN for dbt docs hosting (free tier, no server needed) |
+| OIDC Provider | GitHub Actions keyless authentication |
+| IAM Role | CI/CD role with S3 read/write + CloudFront invalidation (assumed via OIDC) |
 
 ## CI/CD Pipeline
 
@@ -124,8 +154,9 @@ Uses **defer/favor-state** for incremental deploys — only modified models and 
 2. Download production manifest from S3 (if exists)
 3. dbt build --select state:modified+ --defer --favor-state --state prod_state
 4. Generate and upload dbt docs to S3
-5. Upload manifest + run_results to S3 for next deploy
-6. Email notification
+5. Invalidate CloudFront cache
+6. Upload manifest + run_results to S3 for next deploy
+7. Email notification
 ```
 
 Falls back to a full build if no prior manifest exists (first run).
@@ -142,29 +173,6 @@ Uses **merge-base state comparison** — only changed models are linted, compile
 5. Run changed models with --defer to base state
 6. Test changed models with --defer to base state
 ```
-
-## Infrastructure
-
-See [docs/infrastructure.md](docs/infrastructure.md) for full details.
-
-### Snowflake (`terraform/snowflake/`)
-
-| Resource | Details |
-|----------|---------|
-| Database | `SKYTRAX_REVIEWS_DB` |
-| Warehouses | 5 sizes: `SKYTRAX_COMPUTE_XSMALL` through `XLARGE` |
-| Roles | `SKYTRAX_ADMIN` > `SKYTRAX_TRANSFORMER` + `SKYTRAX_ANALYST` |
-| Service Accounts | `PROD_DBT`, `DBT_CICD` (transformer role) |
-| Analyst Users | `GINA_ANALYST`, `VICIENT_ANALYST` (analyst role) |
-
-### AWS (`terraform/aws/`)
-
-| Resource | Purpose |
-|----------|---------|
-| S3 Bucket | dbt artifacts (manifests, run_results, docs) — versioned, encrypted |
-| CloudFront | CDN for dbt docs hosting (free tier, no server needed) |
-| OIDC Provider | GitHub Actions keyless authentication |
-| IAM Role | CI/CD role with S3 read/write + CloudFront invalidation (assumed via OIDC) |
 
 ## Getting Started
 
@@ -229,7 +237,7 @@ dbt-dags/                   Astronomer/Airflow project
     transformation_dag.py   cosmos DbtDag (PROD_DBT user)
 terraform/
   snowflake/                RBAC, users, warehouses, schemas
-  aws/                      S3, OIDC, IAM, VPC, EC2
+  aws/                      S3, CloudFront, OIDC, IAM
 .github/
   workflows/
     deploy_main.yml         CD: defer/favor-state deploy
@@ -237,6 +245,7 @@ terraform/
   actions/
     dbt-ci-init/            Composite action: Python, venv, dbt deps
 docs/                       Setup guides
+assets/                     Screenshots (AWS, Snowflake, dbt)
 requirements.txt            CI dependencies (dbt, sqlfluff)
 requirements-dev.txt        Local dev dependencies (+ pandas, ipykernel)
 setup.cfg                   SQLFluff config
@@ -252,6 +261,7 @@ setup.cfg                   SQLFluff config
 | `SNOWFLAKE_ROLE` | `SKYTRAX_TRANSFORMER` |
 | `AWS_ROLE_ARN` | IAM role ARN for OIDC (from `terraform output`) |
 | `S3_ARTIFACTS_BUCKET` | S3 bucket name for artifacts |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront distribution ID for cache invalidation |
 | `EMAIL_USERNAME` | Gmail address for deploy notifications |
 | `EMAIL_PASSWORD` | Gmail app password |
 

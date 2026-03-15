@@ -23,15 +23,13 @@ runs:
       with:
         python-version: ${{ inputs.python_version }}
 
-    - name: Cache pip/venv
-      id: cache-venv
+    - name: Cache pip packages
       uses: actions/cache@v4
       with:
-        path: dbt_venv
-        key: dbt-venv-v5-${{ runner.os }}-py${{ inputs.python_version }}-${{ hashFiles('requirements.txt') }}
+        path: ~/.cache/pip
+        key: pip-${{ runner.os }}-py${{ inputs.python_version }}-${{ hashFiles('requirements.txt') }}
 
     - name: Create venv and install dependencies
-      if: steps.cache-venv.outputs.cache-hit != 'true'
       shell: bash
       run: |
         python -m venv dbt_venv
