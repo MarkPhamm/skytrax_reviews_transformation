@@ -1,0 +1,1 @@
+- [project_infra_setup.md](project_infra_setup.md) - Terraform directory structure and what each module manages
