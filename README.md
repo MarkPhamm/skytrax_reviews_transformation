@@ -38,8 +38,6 @@ A modern data transformation and CI/CD pipeline for airline industry analytics, 
 
 ## Technology Stack
 
-<img width="1560" height="540" alt="image" src="https://github.com/user-attachments/assets/57dc62cb-46b2-4586-b1f6-5225ab8ca2af" />
-
 | Layer | Tool |
 |-------|------|
 | Data Warehouse | Snowflake |
