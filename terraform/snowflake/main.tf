@@ -161,7 +161,7 @@ resource "snowflake_grant_privileges_to_account_role" "admin_wh_all" {
 
 resource "snowflake_grant_privileges_to_account_role" "transformer_db" {
   account_role_name = snowflake_account_role.transformer.name
-  privileges        = ["USAGE"]
+  privileges        = ["USAGE", "CREATE SCHEMA"]
   on_account_object {
     object_type = "DATABASE"
     object_name = snowflake_database.skytrax.name
