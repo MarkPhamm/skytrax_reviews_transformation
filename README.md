@@ -28,13 +28,13 @@ This project is my attempt to build all of that from scratch. I spent a full day
                                    ▼
                     ┌──────────────────────────────┐
                     │   SOURCE schema              │
-                    │   stg__skytrax_reviews (view) │
+                    │   stg__skytrax_reviews (view)│
                     └──────────────┬───────────────┘
                                    │
                                    ▼
                     ┌──────────────────────────────┐
                     │   INTERMEDIATE schema        │
-                    │   int_reviews_cleaned (view)  │
+                    │   int_reviews_cleaned (view) │
                     └──────────────┬───────────────┘
                                    │
                     ┌──────┬───────┼───────┬───────┐
@@ -162,8 +162,9 @@ See [docs/infrastructure.md](docs/infrastructure.md) for full details.
 | Resource | Purpose |
 |----------|---------|
 | S3 Bucket | dbt artifacts (manifests, run_results, docs) — versioned, encrypted |
+| CloudFront | CDN for dbt docs hosting (free tier, no server needed) |
 | OIDC Provider | GitHub Actions keyless authentication |
-| IAM Role | CI/CD role with S3 read/write (assumed via OIDC) |
+| IAM Role | CI/CD role with S3 read/write + CloudFront invalidation (assumed via OIDC) |
 
 ## Getting Started
 
@@ -180,6 +181,10 @@ Set up your dev environment, run dbt locally, and start the Airflow scheduler.
 ### 3. [CI/CD Pipeline](docs/cicd.md)
 
 Configure GitHub secrets, understand the slim CI and defer/favor-state CD workflows.
+
+### 4. [dbt Docs Hosting](docs/dbt_docs.md)
+
+How we host dbt docs with CloudFront + S3 (and why we switched from EC2).
 
 ## Quick Reference
 
