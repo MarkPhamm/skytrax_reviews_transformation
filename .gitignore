@@ -179,3 +179,4 @@ cython_debug/
 /configuration.env
 /.cursor
 /.vscode
+.github_insurify/

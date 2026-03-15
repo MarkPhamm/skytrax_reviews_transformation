@@ -1,235 +1,243 @@
 # Skytrax Airline Reviews Data Transformation
 
-This project implements a modern data transformation pipeline for airline industry analytics, designed to process and model customer review data from **500+ airlines** across [Skytrax Airline Quality](https://www.airlinequality.com/). With over **100,000 reviews**, it leverages **dbt**, **Snowflake**, and **Apache Airflow**, orchestrated via **Astronomer**, to create a scalable, production-ready workflow for comprehensive airline performance analysis.
+A modern data transformation and CI/CD pipeline for airline industry analytics, processing **100,000+ customer reviews** from **500+ airlines** via [Skytrax Airline Quality](https://www.airlinequality.com/). Built with **dbt**, **Snowflake**, **Terraform**, and **GitHub Actions**.
 
 ![image](https://github.com/user-attachments/assets/44063b8d-ad6b-45a3-b802-de5b449cc5d4)
 
 ---
 
-## 🗂 Project Structure
+## Project Structure
 
 ```
 .
-├── data/                 # Raw and processed data files
-├── data_model/           # Data model diagrams and definitions
-│   ├── schema.jpeg       # Visual data model
-│   └── schema.txt        # Text-based schema description
-├── dbt-dags/             # dbt models and Airflow DAGs
-│   ├── dags/             # DAG definitions
-│   ├── tests/            # Data quality tests
-│   └── .astro/           # Astronomer CLI configuration
-├── notebooks/            # Jupyter notebooks for Snowflake analysis
-│   ├── snowflake_connection.ipynb
-│   └── snowflake_connection.py
-└── requirements.txt      # Python package requirements
+├── skytrax_transformation/     # dbt project (single source of truth)
+│   ├── models/
+│   │   ├── staging/            # 1:1 source mirrors (views)
+│   │   ├── intermediate/       # Cleaned/normalized business logic
+│   │   └── marts/              # Star schema dims + facts (tables)
+│   ├── macros/                 # Custom dbt macros
+│   ├── tests/                  # Data quality tests
+│   └── profiles.yml            # Snowflake connection (env vars, no secrets)
+├── dbt-dags/                   # Astronomer/Airflow orchestration
+│   ├── dags/
+│   │   ├── transformation_dag.py
+│   │   └── dbt/ -> ../../skytrax_transformation  (symlink)
+│   └── Dockerfile
+├── terraform/
+│   ├── snowflake/              # Snowflake RBAC, users, warehouses, schemas
+│   └── aws/                    # S3 artifacts, VPC, EC2 dbt docs hosting
+├── .github/workflows/
+│   └── cicd.yml                # CI/CD pipeline
+├── data/                       # Raw CSV data
+├── notebooks/                  # Snowflake analysis notebooks
+├── setup.cfg                   # SQLFluff linting config
+└── requirements.txt
 ```
 
 ---
 
-## ⚙️ Technology Stack
+## Technology Stack
+
 <img width="1560" height="540" alt="image" src="https://github.com/user-attachments/assets/57dc62cb-46b2-4586-b1f6-5225ab8ca2af" />
 
-- **Data Source**: [Skytrax Airline Reviews](https://www.airlinequality.com/) - 100k+ reviews from 500+ airlines
-- **Programming Language**: Python 3.12.5  
-- **Data Warehouse**: Snowflake  
-- **Transformation Tool**: dbt
-- **Orchestration**: Apache Airflow powered by [Astronomer](https://www.astronomer.io/)  
+| Layer | Tool |
+|-------|------|
+| Data Warehouse | Snowflake |
+| Transformation | dbt (dbt-snowflake) |
+| Orchestration | Apache Airflow (Astronomer) |
+| Infrastructure | Terraform (AWS + Snowflake) |
+| CI/CD | GitHub Actions |
+| Linting | SQLFluff |
+| Docs Hosting | EC2 + nginx |
+| Artifact Storage | S3 |
 
 ---
 
-## 🧱 Data Architecture
+## Data Model
 
-### 1. Data Source
-Customer reviews are scraped from [Skytrax AirlineQuality.com](https://www.airlinequality.com/), capturing **100,000+ reviews from 500+ airlines worldwide**, including structured and unstructured data elements such as:
+### Star Schema
 
-- **Flight Route** (e.g., *Singapore to Sydney*)  
-- **Aircraft Type** (e.g., *Boeing 777*)
-- **Seat Type** (e.g., *Business Class*)  
-- **Type of Traveller** (e.g., *Solo Leisure*)  
-- **Date Flown** (e.g., *March 2025*) 
-- **Airline Information** (Carrier name, brand identity)
-- **Star Ratings** (Seat Comfort, Cabin Staff, Food & Beverages, Entertainment, Ground Service, Value for Money)  
-- **Review Text** and **Submission Date**  
-- **Verification Flag** (Trip Verified)  
-- **Reviewer Info** (Name, Country, Number of Reviews)
---- 
+The project follows **Kimball star schema** methodology with deterministic surrogate keys (`dbt_utils.generate_surrogate_key`).
 
-### 2. Data Model
+**Grain**: one row per customer review per flight.
 
-#### Dimension Tables
-- `dim_customer`: Identity, loyalty, and flight history  
-- `dim_aircraft`: Manufacturer, model, and seating layout  
-- `dim_location`: Airports, cities, and time zones  
-- `dim_date`: Calendar and fiscal date tracking  
+| Model | Type | Description |
+|-------|------|-------------|
+| `fct_review` | Fact | Review metrics, ratings, calculated averages, and rating bands |
+| `dim_customer` | Dimension | Reviewer identity and flight count |
+| `dim_airline` | Dimension | Airline name |
+| `dim_aircraft` | Dimension | Aircraft model, manufacturer, seat capacity |
+| `dim_location` | Dimension | City + airport (role-playing: origin, destination, transit) |
+| `dim_date` | Dimension | Calendar + fiscal dates (role-playing: submitted, flown) |
 
-#### Fact Table
-- `fct_review`: One row per customer review per flight across all airlines
-  - Includes metrics (ratings), booleans (verified, recommended), categorical fields (seat type, travel type), and airline identifier
+### DAG Flow
 
-### 3. Data Flow
-- **Source Layer**: Web scraping + staging  
-- **Transformation Layer**: dbt modeling + business logic  
-- **Orchestration Layer**: DAG scheduling and task dependency management via **Astronomer**  
-- **Presentation Layer**: Clean fact/dim tables for BI/reporting and cross-airline benchmarking
-
-### 4. Data Quality Framework
-- Null checks  
-- Foreign key validation  
-- Freshness and completeness monitoring  
-- dbt tests for schema integrity and logic rules  
-
----
-
-## 🧩 Project Components
-
-### 📊 Data Model
-
-Located in `data_model/`:
-- `schema.jpeg`: visual schema overview  
-- `schema.txt`: detailed textual schema
-
-### 🛠 dbt + Airflow with Astronomer
-
-Located in `dbt-dags/`:
-- dbt model definitions and tests  
-- Airflow DAGs orchestrated via **Astro CLI**
-- Modular structure for local development and deployment to Astronomer Cloud or Docker environments
-
-### 📈 Analysis & Validation
-
-Notebook resources in `notebooks/` for:
-- Establishing a connection to Snowflake  
-- Running exploratory queries  
-- Testing pipeline output  
-
----
-
-## 📦 Key Dependencies
-
-- `dbt-snowflake==1.9.2`  
-- `pandas==2.2.3`  
-- `snowflake-sqlalchemy==1.7.3`  
-- Managed via `requirements.txt`
-
----
-
-## 🔄 CI/CD Pipeline
-
-This project uses GitHub Actions for automated data transformation pipeline:
-
-### Workflow Triggers
-- **Push**: Triggers on pushes to `main` branch
-- **Pull Request**: Runs on PRs to `main` branch
-- **Schedule**: Executes daily at 00:00 UTC
-- **Manual**: Can be triggered via workflow_dispatch
-
-### Pipeline Steps
-1. **Environment Setup**
-   - Python 3.12 setup
-   - Dependencies installation
-   - dbt package installation
-
-2. **Data Transformation**
-   - Runs dbt build process
-   - Uses Snowflake credentials from secrets
-
-3. **Notifications**
-   - Sends email notifications on completion
-   - Includes run time, trigger info, and status
-
-### Workflow Status
-[![BA Transformation](https://github.com/MarkPhamm/british-airways-transformation/actions/workflows/cicd.yml/badge.svg)](https://github.com/MarkPhamm/british-airways-transformation/actions/workflows/cicd.yml)
-
----
-
-## 🌐 Data Modeling Approach
-Let me know if you'd like a diagram for the Airflow DAG flow or a `README.md` version with clickable section links and badges.
-
-## Data Model Overview
-
-### **Step 1: Business Processes**
-Business processes represent real-world events that generate measurable data. Across the global airline industry, the core business process is the **collection of customer flight reviews**. Each review submitted by a customer reflects their experience on a specific flight with any of the 500+ airlines and becomes a fact event. These reviews include detailed ratings on various service categories, forming the backbone of our comprehensive airline analytics platform.
-
-### **Step 2: Define the Grain**
-The grain defines the level of detail stored in the fact table. For this model, the grain is defined as:
-
-> **One customer review per flight.**
-
-Each row in the `fct_review` table represents a unique review event containing metrics tied to a specific customer's flight experience across any airline in our dataset. This atomic grain ensures consistency and supports granular performance analysis across multiple service touchpoints and enables cross-airline benchmarking and industry-wide insights.
-
-### **Step 3: Dimensions for Descriptive Context**
-Dimension tables provide the **who, what, where, when** context for interpreting facts.
-
-- **Who:** `dim_customer` — describes the reviewer through `customer_name`, `nationality`, and `number_of_flights`.
-- **What:** `dim_aircraft` — provides context on the aircraft via `aircraft_model`, `aircraft_manufacturer`, and `seat_capacity`.
-- **Where:** `dim_location` — captures the origin, destination, and transit points, using a combination of `city` and `airport_name`.
-- **When:** `dim_date` — captures both `date_flown` and `date_submitted` and supports calendar and financial date logic (`cal_year`, `fin_quarter`, etc.).
-
-### **Step 4: Facts for Measurement**
-Facts are the **quantitative outputs** from the review process, collected per flight review:
-
-- **Ratings:**  
-  `seat_comfort`, `cabin_staff_service`, `food_and_beverages`, `inflight_entertainment`, `ground_service`, `wifi_and_connectivity`, `value_for_money`
-
-- **Booleans:**  
-  `verified`, `recommended`
-
-- **Categorical Descriptions:**  
-  `seat_type`, `type_of_traveller`, `airline`, `review_text`
-
-These facts represent real customer input across 500+ airlines and form the foundation for performance dashboards, KPIs, customer sentiment insights, and comprehensive airline industry benchmarking.
-
----
-
-## ⭐ Star Schema Overview
-
-This model follows a classic **star schema** structure where the `fct_review` table sits at the center and joins to dimension tables via foreign keys:
-
-| Foreign Key in `fct_review`      | Dimension Table      | Description                            |
-|----------------------------------|-----------------------|----------------------------------------|
-| `customer_id`                    | `dim_customer`        | Links each review to a specific customer |
-| `date_submitted_id` / `date_flown_id` | `dim_date`       | Supports dual-date tracking (when submitted vs when flown) |
-| `origin_location_id`, `destination_location_id`, `transit_location_id` | `dim_location` | Connects review to flight locations |
-| `aircraft_id`                    | `dim_aircraft`        | Captures aircraft-related context |
+```
+source (raw.skytrax_reviews)
+  └── stg__skytrax_reviews (staging, view)
+        └── int_reviews_cleaned (intermediate, cleaning + normalization)
+              ├── dim_customer
+              ├── dim_airline
+              ├── dim_aircraft
+              ├── dim_location
+              ├── dim_date (macro-generated, one_time_run tag)
+              └── fct_review (joins all dimensions, calculates average_rating + rating_band)
+```
 
 ![schema](https://github.com/user-attachments/assets/f6276b06-9f03-410a-b2cc-785b0a23b8f2)
 
-This schema supports efficient slicing, filtering, and aggregating reviews by date, location, customer, aircraft, and airline, enabling detailed insights across the global airline industry and comprehensive cross-carrier performance analysis.
+---
 
-## User set up
-```SQL
-CREATE DATABASE SKYTRAX_REVIEWS_DB;
-USE SKYTRAX_REVIEWS_DB;
-CREATE SCHEMA RAW;
-CREATE SCHEMA MARTS;
+## CI/CD Pipeline
 
-USE ROLE SECURITYADMIN;
+### Workflow Triggers
 
-CREATE ROLE MARTS_ROLE;
+| Trigger | When |
+|---------|------|
+| Push | Merge to `main` |
+| Pull Request | PR opened against `main` |
+| Schedule | Every Monday 00:00 UTC |
+| Manual | `workflow_dispatch` |
 
--- Grant usage on the database
-GRANT USAGE ON DATABASE SKYTRAX_REVIEWS_DB TO ROLE MARTS_ROLE;
+### Pipeline Steps
 
--- Grant usage on the schema MARTS
-GRANT USAGE ON SCHEMA SKYTRAX_REVIEWS_DB.MARTS TO ROLE MARTS_ROLE;
-
--- Grant read access to all tables in MARTS
-GRANT SELECT ON ALL TABLES IN SCHEMA SKYTRAX_REVIEWS_DB.MARTS TO ROLE MARTS_ROLE;
-
--- Ensure future tables in MARTS are also accessible
-GRANT SELECT ON FUTURE TABLES IN SCHEMA SKYTRAX_REVIEWS_DB.MARTS TO ROLE MARTS_ROLE;
-
-
--- Define user variable
-SET my_user = '';
-
--- Create user
-CREATE USER IDENTIFIER($my_user)
-  PASSWORD = ''
-  DEFAULT_ROLE = MARTS_ROLE
-  DEFAULT_WAREHOUSE = COMPUTE_WH
-  MUST_CHANGE_PASSWORD = FALSE;
-
--- Grant role to user
-GRANT ROLE MARTS_ROLE TO USER IDENTIFIER($my_user);
 ```
+1. Checkout code
+2. Set up Python 3.12 + install dependencies
+3. dbt deps → dbt debug (staging target)
+4. dbt run --target staging (dim_date first, then remaining models)
+5. dbt docs generate → upload to S3 (/docs/)
+6. Upload manifest.json + run_results.json to S3 (/artifacts/)
+7. Email notification with status
+```
+
+The pipeline uses the **staging** target (writes to `STAGING` schema in Snowflake), keeping `DEV` for local development and `MARTS` for production.
+
+### Slim CI (State Comparison)
+
+After each successful run, `manifest.json` is uploaded to S3. This enables **slim CI** on PRs — only modified models and their downstream dependencies are built:
+
+```bash
+dbt build --select state:modified+ --state ./artifacts/
+```
+
+### dbt Docs Hosting
+
+dbt docs are auto-published on every merge to `main`:
+1. CI generates docs and syncs to S3
+2. EC2 instance (nginx) pulls from S3 every 5 minutes
+3. Docs are served at `http://<ec2-public-ip>`
+
+---
+
+## Infrastructure (Terraform)
+
+### Snowflake (`terraform/snowflake/`)
+
+| Resource | Purpose |
+|----------|---------|
+| Roles | `TRANSFORMER` (CI/CD), `ANALYST` (read-only), `ADMIN` |
+| Users | Created with passwords, assigned to roles |
+| Schemas | RAW, STAGING, MARTS, DEV |
+| Grants | Future grants on tables/views for automatic permission inheritance |
+| Warehouses | COMPUTE_WH for transformations |
+
+### AWS (`terraform/aws/`)
+
+| File | Resources |
+|------|-----------|
+| `s3.tf` | Artifacts bucket (versioned, encrypted, lifecycle rules) |
+| `vpc.tf` | VPC, public subnet, internet gateway, route table |
+| `iam.tf` | IAM role + instance profile for EC2 → S3 access |
+| `ec2.tf` | t3.micro running nginx, security group (HTTP + SSH) |
+
+### Setup
+
+```bash
+# Snowflake
+cd terraform/snowflake
+cp terraform.tfvars.example terraform.tfvars  # fill in credentials
+terraform init && terraform plan && terraform apply
+
+# AWS
+cd terraform/aws
+cp terraform.tfvars.example terraform.tfvars  # fill in credentials
+terraform init && terraform plan && terraform apply
+```
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Python 3.12+
+- dbt-snowflake
+- Snowflake account with appropriate permissions
+
+### Setup
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Set Snowflake env vars
+export SNOWFLAKE_ACCOUNT='your-account'
+export SNOWFLAKE_USER='your-user'
+export SNOWFLAKE_PASSWORD='your-password'
+export SNOWFLAKE_ROLE='your-role'
+
+# 3. Run dbt
+cd skytrax_transformation
+dbt deps
+dbt debug --profiles-dir ./
+dbt run --profiles-dir ./         # uses dev target (DEV schema)
+dbt test --profiles-dir ./
+dbt docs generate --profiles-dir ./
+dbt docs serve --profiles-dir ./
+```
+
+### SQL Linting
+
+Linting is configured in `setup.cfg` (SQLFluff with dbt templater):
+- All SQL lowercase (keywords, functions, identifiers)
+- Trailing commas
+- Shorthand casting (`::`)
+- Explicit column aliases
+
+```bash
+sqlfluff lint models/
+sqlfluff fix models/
+```
+
+### Local Airflow (Astronomer)
+
+The `dbt-dags/` directory symlinks to the root dbt project — no code duplication.
+
+```bash
+cd dbt-dags
+astro dev start
+```
+
+---
+
+## GitHub Secrets Required
+
+| Secret | Description |
+|--------|-------------|
+| `SNOWFLAKE_ACCOUNT` | Snowflake account identifier |
+| `SNOWFLAKE_USER` | Snowflake username |
+| `SNOWFLAKE_PASSWORD` | Snowflake password |
+| `SNOWFLAKE_ROLE` | Snowflake role |
+| `SNOWFLAKE_SCHEMA` | Target schema |
+| `AWS_ACCESS_KEY_ID` | AWS access key for S3 uploads |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key |
+| `S3_ARTIFACTS_BUCKET` | S3 bucket name for artifacts/docs |
+| `EMAIL_USERNAME` | Gmail address for notifications |
+| `EMAIL_PASSWORD` | Gmail app password |
+
+---
+
+## Workflow Status
+
+[![BA Transformation](https://github.com/MarkPhamm/skytrax_reviews_transformation/actions/workflows/cicd.yml/badge.svg)](https://github.com/MarkPhamm/skytrax_reviews_transformation/actions/workflows/cicd.yml)
