@@ -1,4 +1,11 @@
--- models/dim_aircraft.sql
+{{ config(
+    materialized='table',
+) }}
+
+-- dim_aircraft.sql
+-- Aircraft dimension table
+-- Grain: one row per unique aircraft model from reviews
+-- Surrogate key: generated using dbt_utils for deterministic, idempotent key generation
 
 {% set aircraft_data = [
     {'model': 'A318', 'manufacturer': 'Airbus', 'capacity': 132},
@@ -23,34 +30,46 @@
     {'model': 'Embraer 190', 'manufacturer': 'Embraer', 'capacity': 98},
     {'model': 'Embraer 195', 'manufacturer': 'Embraer', 'capacity': 120},
     {'model': 'Saab 2000', 'manufacturer': 'Saab', 'capacity': 50},
-    {'model': 'Unknown', 'manufacturer': 'Unknown', 'capacity': none}
+    {'model': 'Unknown', 'manufacturer': 'Unknown', 'capacity': none},
 ] %}
 
-with review as (
-    select * from {{ ref("stg__skytrax_reviews") }}
+with reviews as (
+
+    select
+        *,
+    from {{ ref('int_reviews_cleaned') }}
+
 ),
 
 raw_aircraft as (
-    select distinct coalesce(aircraft, 'Unknown') as aircraft_model
-    from review
+
+    select
+        distinct aircraft_model,
+    from reviews
+
 ),
 
 final as (
+
     select
-        row_number() over (order by aircraft_model) as aircraft_id,
-        aircraft_model,
+        {{ dbt_utils.generate_surrogate_key(['raw_aircraft.aircraft_model']) }} as aircraft_id,
+        raw_aircraft.aircraft_model,
         mapped.manufacturer as aircraft_manufacturer,
-        mapped.capacity as seat_capacity
+        mapped.capacity as seat_capacity,
     from raw_aircraft
     left join (
-        select *
+        select
+            *,
         from (values
             {% for aircraft in aircraft_data -%}
                 ('{{ aircraft.model }}', '{{ aircraft.manufacturer }}', {{ aircraft.capacity if aircraft.capacity is not none else 'null' }}){% if not loop.last %},{% endif %}
             {% endfor %}
         ) as t(model, manufacturer, capacity)
     ) as mapped
-    on raw_aircraft.aircraft_model = mapped.model
+        on raw_aircraft.aircraft_model = mapped.model
+
 )
 
-select * from final
+select
+    *,
+from final

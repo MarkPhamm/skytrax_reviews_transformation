@@ -1,40 +1,63 @@
-with review as (
-    select * from {{ref("stg__skytrax_reviews")}}
+{{ config(
+    materialized='table',
+) }}
+
+-- dim_location.sql
+-- Location dimension table combining origin, destination, and transit airports
+-- Grain: one row per unique (city, airport) combination
+-- Surrogate key: generated using dbt_utils for deterministic, idempotent key generation
+
+with reviews as (
+
+    select
+        *,
+    from {{ ref('int_reviews_cleaned') }}
+
 ),
 
-all_location as (
-    select 
-        coalesce(origin_city, 'Unknown') as city, 
-        coalesce(origin_airport, 'Unknown') as airport
-    from review
+all_locations as (
 
-    union  
+    select
+        origin_city as city,
+        origin_airport as airport,
+    from reviews
 
-    select 
-        coalesce(destination_city, 'Unknown') as city, 
-        coalesce(destination_airport, 'Unknown') as airport 
-    from review
+    union
 
-    union 
+    select
+        destination_city as city,
+        destination_airport as airport,
+    from reviews
 
-    select 
-        coalesce(transit_city, 'Unknown') as city, 
-        coalesce(transit_airport, 'Unknown') as airport 
-    from review
+    union
+
+    select
+        transit_city as city,
+        transit_airport as airport,
+    from reviews
+
 ),
-distinct_location as (
-    select 
+
+distinct_locations as (
+
+    select
         distinct
-        city, 
-        airport
-    from all_location
+        city,
+        airport,
+    from all_locations
+
 ),
 
 final as (
-    select 
-        row_number() over(order by city, airport) as location_id,
+
+    select
+        {{ dbt_utils.generate_surrogate_key(['city', 'airport']) }} as location_id,
         city,
-        airport
-    from distinct_location
+        airport,
+    from distinct_locations
+
 )
-select * from final
+
+select
+    *,
+from final
