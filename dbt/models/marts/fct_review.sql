@@ -84,6 +84,18 @@ with_aircraft as (
 
 ),
 
+with_seat as (
+
+    select
+        wa.*,
+        ds.seat_id,
+    from with_aircraft as wa
+    left join {{ ref('dim_seat') }} as ds
+        on coalesce(wa.seat_type, 'unknown') = ds.seat_type
+        and coalesce(wa.type_of_traveller, 'unknown') = ds.type_of_traveller
+
+),
+
 with_ratings as (
 
     select
@@ -111,7 +123,7 @@ with_ratings as (
             ),
             2
         ) as average_rating,
-    from with_aircraft as wa
+    from with_seat as wa
 
 ),
 
@@ -127,10 +139,9 @@ final as (
         destination_location_id,
         transit_location_id,
         aircraft_id,
+        seat_id,
         review_id,
         is_verified,
-        seat_type,
-        type_of_traveller,
         seat_comfort,
         cabin_staff_service,
         food_and_beverages,
@@ -159,6 +170,7 @@ final as (
         and destination_location_id is not null
         and transit_location_id is not null
         and aircraft_id is not null
+        and seat_id is not null
         -- Remove rows with invalid rating values (must be between 1-5, or allow null)
         and (seat_comfort is null or (seat_comfort >= 1 and seat_comfort <= 5))
         and (cabin_staff_service is null or (cabin_staff_service >= 1 and cabin_staff_service <= 5))

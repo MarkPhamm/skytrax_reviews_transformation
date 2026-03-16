@@ -120,6 +120,18 @@ models:
           meta:
             datatypes: string
 
+      - name: seat_id
+        description: Foreign key to dim_seat.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_seat')
+                field: seat_id
+        config:
+          meta:
+            datatypes: string
+
       - name: is_verified
         description: Whether the review was verified by the airline.
         tests:
@@ -129,26 +141,6 @@ models:
         config:
           meta:
             datatypes: boolean
-
-      - name: seat_type
-        description: Type of seat purchased (Premium Economy, Business Class, Economy Class, First Class).
-        tests:
-          - accepted_values:
-              arguments:
-                values: ['Premium Economy', 'Business Class', 'Economy Class', 'First Class', null]
-        config:
-          meta:
-            datatypes: string
-
-      - name: type_of_traveller
-        description: Category of traveller (Business, Couple Leisure, Family Leisure, Solo Leisure).
-        tests:
-          - accepted_values:
-              arguments:
-                values: ['Business', 'Couple Leisure', 'Family Leisure', 'Solo Leisure', null]
-        config:
-          meta:
-            datatypes: string
 
       - name: seat_comfort
         description: Seat comfort rating (1-5 scale, null allowed).
@@ -543,6 +535,43 @@ models:
         config:
           meta:
             datatypes: integer
+
+    config:
+      meta:
+        contracts:
+          enabled: true
+
+# ---
+
+  - name: dim_seat
+    description: |
+      Seat dimension table combining seat class and traveller type.
+      Grain: one row per unique (seat_type, type_of_traveller) combination.
+    columns:
+      - name: seat_id
+        description: Surrogate key for seat (deterministic, idempotent).
+        tests:
+          - unique
+          - not_null
+        config:
+          meta:
+            datatypes: string
+
+      - name: seat_type
+        description: Type of seat purchased (Premium Economy, Business Class, Economy Class, First Class, unknown).
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: string
+
+      - name: type_of_traveller
+        description: Category of traveller (Business, Couple Leisure, Family Leisure, Solo Leisure, unknown).
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: string
 
     config:
       meta:
