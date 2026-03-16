@@ -14,6 +14,10 @@ inputs:
     description: "Download changed_models artifact"
     default: "false"
     required: false
+  download_prod_manifest:
+    description: "Download prod_manifest artifact to ./prod_state (for dbt clone)"
+    default: "false"
+    required: false
 
 runs:
   using: "composite"
@@ -50,3 +54,10 @@ runs:
       with:
         name: base_manifest
         path: dbt/base_state
+
+    - name: Download prod_manifest artifact
+      if: inputs.download_prod_manifest == 'true'
+      uses: actions/download-artifact@v4
+      with:
+        name: prod_manifest
+        path: dbt/prod_state
