@@ -255,6 +255,61 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_future_views"
 }
 
 # -----------------------------------------------------------------------------
+# Grants -- Ownership (TRANSFORMER: owns all tables/views in prod schemas)
+# -----------------------------------------------------------------------------
+# dbt uses CREATE OR REPLACE which requires OWNERSHIP on existing objects.
+# Transfer ownership of all current and future tables/views to the transformer
+# role so CI/CD and production deploys can rebuild models.
+
+resource "snowflake_grant_ownership" "transformer_tables" {
+  for_each          = local.prod_schemas
+  account_role_name = snowflake_account_role.transformer.name
+  on {
+    all {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+    }
+  }
+  outbound_privileges = "COPY"
+}
+
+resource "snowflake_grant_ownership" "transformer_views" {
+  for_each          = local.prod_schemas
+  account_role_name = snowflake_account_role.transformer.name
+  on {
+    all {
+      object_type_plural = "VIEWS"
+      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+    }
+  }
+  outbound_privileges = "COPY"
+}
+
+resource "snowflake_grant_ownership" "transformer_future_tables" {
+  for_each          = local.prod_schemas
+  account_role_name = snowflake_account_role.transformer.name
+  on {
+    future {
+      object_type_plural = "TABLES"
+      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+    }
+  }
+  outbound_privileges = "COPY"
+}
+
+resource "snowflake_grant_ownership" "transformer_future_views" {
+  for_each          = local.prod_schemas
+  account_role_name = snowflake_account_role.transformer.name
+  on {
+    future {
+      object_type_plural = "VIEWS"
+      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+    }
+  }
+  outbound_privileges = "COPY"
+}
+
+# -----------------------------------------------------------------------------
 # Grants -- Schemas (ANALYST: read-only on MARTS)
 # -----------------------------------------------------------------------------
 
