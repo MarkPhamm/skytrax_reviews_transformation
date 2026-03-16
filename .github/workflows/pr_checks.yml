@@ -40,7 +40,7 @@ jobs:
       - name: ci-init
         uses: ./.github/actions/dbt-ci-init
 
-      - name: Build merge-base manifest (state baseline)
+      - name: Build merge-base manifests (state baseline)
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
@@ -53,17 +53,22 @@ jobs:
           mkdir -p ../../dbt_base
           git -C "$(git rev-parse --show-toplevel)" archive "$BASE_SHA" | tar -x -C ../../dbt_base
 
-          # Parse the baseline project to produce its manifest (use prod target
-          # so dbt clone can resolve production schema locations)
           cd ../../dbt_base/dbt
           source ../../skytrax_reviews_transformation/dbt_venv/bin/activate
           dbt deps --profiles-dir ./
-          dbt parse --profiles-dir ./ --target prod
 
-          # Copy manifest back for state comparison
+          # Parse with staging target for state:modified comparison
+          dbt parse --profiles-dir ./ --target staging
           cd ../../skytrax_reviews_transformation/dbt
           mkdir -p base_state
           cp ../../dbt_base/dbt/target/manifest.json base_state/manifest.json
+
+          # Parse with prod target so dbt clone resolves production schema locations
+          cd ../../dbt_base/dbt
+          dbt parse --profiles-dir ./ --target prod
+          cd ../../skytrax_reviews_transformation/dbt
+          mkdir -p prod_state
+          cp ../../dbt_base/dbt/target/manifest.json prod_state/manifest.json
 
       - name: Detect changed models
         id: diff
@@ -116,11 +121,18 @@ jobs:
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload base manifest
+      - name: Upload base manifest (staging)
         uses: actions/upload-artifact@v4
         with:
           name: base_manifest
           path: dbt/base_state/manifest.json
+          retention-days: 3
+
+      - name: Upload prod manifest (for clone)
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod_manifest
+          path: dbt/prod_state/manifest.json
           retention-days: 3
 
       - name: Upload changed models list
@@ -213,7 +225,7 @@ jobs:
         uses: ./.github/actions/dbt-ci-init
         with:
           download_changed_models: "true"
-          download_base_manifest: "true"
+          download_prod_manifest: "true"
 
       - name: Clone production tables to staging
         working-directory: ./dbt
@@ -221,7 +233,7 @@ jobs:
           source ../dbt_venv/bin/activate
           dbt clone \
             --profiles-dir ./ \
-            --state base_state \
+            --state prod_state \
             --target staging
 
       - name: Run changed models
