@@ -150,6 +150,17 @@ models:
           meta:
             datatypes: string
 
+      - name: has_layover
+        description: Whether the flight included a transit stop.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+        config:
+          meta:
+            datatypes: boolean
+
       - name: seat_comfort
         description: Seat comfort rating (1-5 scale, null allowed).
         tests:

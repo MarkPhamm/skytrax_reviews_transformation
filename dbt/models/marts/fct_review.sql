@@ -139,6 +139,7 @@ final as (
         wifi_and_connectivity,
         value_for_money,
         recommended,
+        transit_city != 'unknown' as has_layover,
         average_rating,
         case
             when average_rating is null then 'unknown'
