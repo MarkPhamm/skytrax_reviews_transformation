@@ -117,6 +117,8 @@ Runs even if previous steps failed (`if: always()`).
 
 ## Continuous Integration — `pr_checks.yml`
 
+![CI Pipeline](../assets/cicd/ci.png)
+
 **Triggers:** Pull request opened, synchronized, or reopened against `main`.
 
 **Concurrency:** Cancels in-progress runs on the same PR number. Saves
