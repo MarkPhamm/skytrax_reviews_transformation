@@ -29,6 +29,22 @@ variable "snowflake_admin_password" {
   sensitive   = true
 }
 
+# --- Database ---
+
+variable "database_name" {
+  description = "Name of the Snowflake database for this project"
+  type        = string
+  default     = "SKYTRAX_REVIEWS_DB"
+}
+
+# --- Warehouse ---
+
+variable "warehouse_auto_suspend" {
+  description = "Seconds of inactivity before the warehouse auto-suspends (saves credits)"
+  type        = number
+  default     = 60
+}
+
 # --- User Passwords ---
 
 variable "prod_dbt_password" {
@@ -55,18 +71,15 @@ variable "vicient_analyst_password" {
   sensitive   = true
 }
 
-# --- Database ---
-
-variable "database_name" {
-  description = "Name of the Snowflake database for this project"
+variable "derek_analyst_password" {
+  description = "Password for DEREK_ANALYST user"
   type        = string
-  default     = "SKYTRAX_REVIEWS_DB"
+  sensitive   = true
 }
 
-# --- Warehouse ---
-
-variable "warehouse_auto_suspend" {
-  description = "Seconds of inactivity before the warehouse auto-suspends (saves credits)"
-  type        = number
-  default     = 60
-}
+# --- [NEW ANALYST] Step 1/5: Add a password variable ---
+# variable "alex_analyst_password" {
+#   description = "Password for ALEX_ANALYST user"
+#   type        = string
+#   sensitive   = true
+# }
