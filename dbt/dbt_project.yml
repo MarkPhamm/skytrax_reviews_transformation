@@ -1,11 +1,11 @@
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
-name: 'ba_transformation'
+name: 'skytrax_transformation'
 version: '1.0.0'
 
 # This setting configures which "profile" dbt uses for this project.
-profile: 'ba_transformation'
+profile: 'skytrax_transformation'
 
 # These configurations specify where dbt should look for different types of files.
 # The `model-paths` config, for example, states that models in this project can be
@@ -29,7 +29,7 @@ clean-targets:
 # directory as views. These settings can be overridden in the individual model
 # files using the `{{ config(...) }}` macro.
 models:
-  ba_transformation:
+  skytrax_transformation:
     # Config indicated by + and applies to all files under models/example/
     staging:
       +materialized: view
@@ -48,7 +48,7 @@ models:
       +tags: ['marts']
 
 seeds:
-  ba_transformation:
+  skytrax_transformation:
     review:
       +enabled: true
       +tags: ['seeds']

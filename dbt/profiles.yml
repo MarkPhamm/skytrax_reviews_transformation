@@ -1,4 +1,4 @@
-ba_transformation:
+skytrax_transformation:
   target: dev
   outputs:
     dev:
