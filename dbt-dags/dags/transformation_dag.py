@@ -14,7 +14,7 @@ default_args = {
 }
 
 profile_config = ProfileConfig(
-    profile_name="ba_transformation",
+    profile_name="skytrax_transformation",
     target_name="prod",
     profile_mapping=SnowflakeUserPasswordProfileMapping(
         conn_id="snowflake_default",
