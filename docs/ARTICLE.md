@@ -296,11 +296,41 @@ This is the same pattern the CD pipeline uses — only rebuild what you changed,
 
 # Step 4: Set up AWS Infrastructure with Terraform
 
-The AWS module creates resources for CI/CD artifact storage and dbt docs hosting. Everything lives in `terraform/aws/`.
+The AWS module creates resources for CI/CD artifact storage and dbt docs hosting. Instead of configuring AWS resources through the console, everything is defined as code in `terraform/aws/`.
 
 ## 4.1 What Terraform creates for us
 
-**S3 Bucket** (`skytrax-reviews-dbt-artifacts-<account_id>`) — Stores three types of artifacts:
+The AWS Terraform code is split across 7 files, each handling one concern:
+
+```text
+terraform/aws/
+├── providers.tf     # How Terraform connects to AWS
+├── variables.tf     # Input definitions (region, project name, bucket name, GitHub repo)
+├── main.tf          # Shared data sources (AWS account ID)
+├── s3.tf            # S3 bucket for dbt artifacts
+├── cloudfront.tf    # CloudFront CDN for dbt docs hosting
+├── iam.tf           # GitHub Actions OIDC provider + IAM role
+├── outputs.tf       # Values printed after apply (for GitHub Secrets)
+└── terraform.tfvars # Actual values (never committed)
+```
+
+Let me walk through what each file creates.
+
+### `providers.tf` — AWS connection
+
+Tells Terraform how to authenticate with AWS. It uses the `terraform-admin` CLI profile (set up in Part 1) and tags every resource with `Project`, `Environment`, and `ManagedBy` so you can track costs and ownership.
+
+### `variables.tf` — Input definitions
+
+Declares every input Terraform needs: AWS region (defaults to `us-east-1`), environment name, project name prefix, S3 bucket name, and the GitHub repository (in `owner/repo` format) for OIDC scoping. Only `artifacts_bucket_name` and `github_repository` are required — the rest have sensible defaults.
+
+### `main.tf` — Shared data sources
+
+A small file that looks up the current AWS account ID via `data "aws_caller_identity"`. This avoids hardcoding your account ID anywhere — other files reference it as `data.aws_caller_identity.current.account_id`.
+
+### `s3.tf` — S3 bucket for dbt artifacts
+
+Creates the S3 bucket that stores three types of artifacts:
 
 ```text
 s3://skytrax-reviews-dbt-artifacts-<account_id>/
@@ -312,13 +342,33 @@ s3://skytrax-reviews-dbt-artifacts-<account_id>/
     └── manifest.json
 ```
 
-The bucket has versioning, encryption (AES-256), all public access blocked (except manifests for local defer), and lifecycle rules to expire old versions after 30 days.
+The file configures four additional resources on the bucket:
+- **Versioning** — enabled so you can recover previous artifact states
+- **Encryption** — SSE-S3 (AES-256) at rest for all objects
+- **Public access block** — blocks public ACLs but allows bucket policies (needed for the public manifest read policy and CloudFront access)
+- **Lifecycle rules** — expires old object versions after 30 days to save storage costs
 
-**CloudFront Distribution** — Serves dbt docs globally via CDN. Uses Origin Access Control so the S3 bucket stays private while CloudFront handles HTTPS and caching. Cache TTL is 5 minutes, and the CD pipeline invalidates it on every deploy so docs are always up to date.
+### `cloudfront.tf` — CDN for dbt docs
 
-Why CloudFront instead of EC2? I actually built the EC2 + nginx approach first (the code is still in `ec2.tf.disabled` and `vpc.tf.disabled`). It worked, but it cost ~$8/month, required OS patching, needed a cron job to sync from S3, and required a whole VPC setup (subnet, internet gateway, route table, security group). CloudFront is $0 on the free tier, fully managed, instant updates, and needs only 3 Terraform resources. The EC2 approach was more educational, but for a static site like dbt docs, CloudFront is the right tool.
+Serves dbt docs globally via CloudFront CDN. Contains three resources:
 
-**OIDC Provider** — This is the key security piece. Instead of storing long-lived AWS access keys in GitHub Secrets (which can leak and need rotation), we use OpenID Connect. GitHub Actions requests a short-lived token from GitHub's OIDC provider, passes it to AWS STS, and AWS validates it against the registered provider. If the token's `sub` claim matches our repo, STS issues temporary credentials (15 minutes). No static credentials stored anywhere.
+- **Origin Access Control (OAC)** — allows CloudFront to read from S3 without making the bucket public. CloudFront signs every request to S3 using SigV4, so the bucket stays private.
+- **CloudFront Distribution** — the CDN itself. Points to the `docs/` prefix in the S3 bucket, serves `index.html` as the default root object, caches for 5 minutes (`default_ttl = 300`), and redirects HTTP to HTTPS.
+- **S3 Bucket Policy** — two policy statements: one allows CloudFront to read any object via OAC, and one allows public read on the `manifests/*` prefix (so developers can `curl` the production manifest for local defer builds).
+
+Why CloudFront instead of EC2? I actually built the EC2 + nginx approach first (the code is still in `dissabled/ec2.tf.disabled` and `dissabled/vpc.tf.disabled`). It worked, but it cost ~$8/month, required OS patching, needed a cron job to sync from S3, and required a whole VPC setup (subnet, internet gateway, route table, security group). CloudFront is $0 on the free tier, fully managed, instant updates, and needs only 3 Terraform resources. The EC2 approach was more educational, but for a static site like dbt docs, CloudFront is the right tool.
+
+### `iam.tf` — GitHub Actions OIDC and IAM role
+
+This is the key security piece. Instead of storing long-lived AWS access keys in GitHub Secrets (which can leak and need rotation), we use OpenID Connect (OIDC) so GitHub Actions can assume an IAM role directly. The file creates three resources:
+
+- **OIDC Identity Provider** — registers GitHub's OIDC issuer (`token.actions.githubusercontent.com`) with AWS. The `client_id_list` is set to `sts.amazonaws.com` (the audience claim), and the `thumbprint_list` is GitHub's stable TLS certificate fingerprint. This is a one-time setup per AWS account.
+
+- **IAM Role** (`skytrax-reviews-github-actions-role`) — the role GitHub Actions assumes. Its trust policy uses a `StringLike` condition on the `sub` claim scoped to `repo:<owner>/<repo>:*`, so only workflows from your specific repo can assume it. No other repo can use this role.
+
+- **IAM Role Policy** — grants three permissions: `s3:GetObject/PutObject/DeleteObject` on the artifacts bucket (for uploading manifests, run results, and docs), `s3:ListBucket` (for sync operations), and `cloudfront:CreateInvalidation` (for busting the docs cache after deploy).
+
+Here's the OIDC authentication flow:
 
 ```text
 GitHub Actions Runner
@@ -337,7 +387,9 @@ GitHub Actions Runner
         (workflow can now call S3 and CloudFront APIs)
 ```
 
-**IAM Role** (`skytrax-reviews-github-actions-role`) — The role GitHub Actions assumes via OIDC. Its policy grants S3 read/write (for artifacts) and CloudFront cache invalidation (for docs). The trust policy is scoped to our specific repo — no other repo can assume this role.
+### `outputs.tf` — Post-apply values
+
+Prints the values you'll need for GitHub Secrets configuration: the S3 bucket name, CloudFront distribution ID and domain name, the GitHub Actions IAM role ARN, and the OIDC provider ARN.
 
 ## 4.2 Configure your variables
 
