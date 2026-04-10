@@ -1,5 +1,13 @@
 name: Deploy Main
 
+# =============================================================================
+# Trigger: Three ways this workflow runs:
+#   1. Push to main -- but ONLY if dbt-related files changed (paths filter).
+#      Changing a README won't trigger a deploy.
+#   2. Schedule -- every Monday at midnight UTC. Refreshes production data
+#      weekly even if no code changed.
+#   3. workflow_dispatch -- manual trigger button in the GitHub Actions UI.
+# =============================================================================
 on:
   push:
     branches: [main]
@@ -12,11 +20,14 @@ on:
     - cron: "0 0 * * 1" # Every Monday at 00:00 UTC
   workflow_dispatch:
 
-# Only one deploy at a time
+# Unlike PR checks, deploys do NOT cancel in-progress runs.
+# If two merges happen quickly, the second deploy waits for the first to finish.
+# You don't want a half-done production deploy.
 concurrency:
   group: deploy-main
   cancel-in-progress: false
 
+# Same Snowflake secrets as PR checks, plus S3 bucket for storing artifacts and docs.
 env:
   SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
   SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
@@ -24,6 +35,9 @@ env:
   SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
   S3_ARTIFACTS_BUCKET: ${{ secrets.S3_ARTIFACTS_BUCKET }}
 
+# id-token: write is needed for OIDC authentication with AWS.
+# Instead of storing AWS access keys as secrets, GitHub generates a short-lived
+# token and exchanges it with AWS IAM (the OIDC provider from terraform/aws/iam.tf).
 permissions:
   id-token: write
   contents: read
@@ -37,6 +51,8 @@ jobs:
       # -----------------------------------------------------------------------
       # Setup
       # -----------------------------------------------------------------------
+
+      # Capture the timestamp now so the email notification shows when the run started.
       - name: Get current timestamp
         id: timestamp
         run: echo "time=$(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_OUTPUT"
@@ -46,15 +62,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Assume the IAM role created in terraform/aws/iam.tf via OIDC.
+      # No long-lived credentials -- just a temporary session token.
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
+      # Reusable composite action: Python, venv, dbt deps.
       - name: ci-init
         uses: ./.github/actions/dbt-ci-init
 
+      # Sanity check that Snowflake credentials work before doing anything expensive.
       - name: Verify Snowflake connection
         working-directory: ./dbt
         run: |
@@ -64,6 +84,9 @@ jobs:
       # -----------------------------------------------------------------------
       # Download production state (if exists)
       # -----------------------------------------------------------------------
+      # Try to download the PREVIOUS production manifest from S3.
+      # If it exists, we can do an incremental deploy (only changed models).
+      # If not (first ever deploy), we do a full build.
       - name: Download production manifest from S3
         id: prod_state
         working-directory: ./dbt
@@ -80,6 +103,13 @@ jobs:
       # -----------------------------------------------------------------------
       # Run models
       # -----------------------------------------------------------------------
+
+      # Incremental deploy (production slim CI):
+      #   state:modified+ = changed models + their downstream children
+      #   --defer          = for any model NOT in the selection, reference the
+      #                      production version instead of trying to build it
+      #   --favor-state    = if a model exists in both current run and state,
+      #                      prefer the state version for upstream references
       - name: Run dbt build (incremental with defer)
         if: steps.prod_state.outputs.has_state == 'true'
         working-directory: ./dbt
@@ -93,6 +123,8 @@ jobs:
             --favor-state \
             --state prod_state
 
+      # Full build fallback -- if there's no prior manifest (first deploy),
+      # just build and test everything.
       - name: Run dbt build (full -- no prior state)
         if: steps.prod_state.outputs.has_state == 'false'
         working-directory: ./dbt
@@ -104,12 +136,16 @@ jobs:
       # -----------------------------------------------------------------------
       # Generate and upload docs
       # -----------------------------------------------------------------------
+
+      # Generate dbt docs (HTML + JSON catalog of all models, tests, sources).
       - name: Generate dbt docs
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
           dbt docs generate --profiles-dir ./ --target prod
 
+      # Sync the generated docs to S3 (the bucket behind the CloudFront distribution
+      # from terraform/aws/). --delete removes old files no longer in target/.
       - name: Upload dbt docs to S3
         working-directory: ./dbt
         run: |
@@ -118,6 +154,8 @@ jobs:
             --include "*.html" \
             --include "*.json"
 
+      # Invalidate CloudFront cache so users see the latest docs immediately
+      # instead of the cached version.
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \
@@ -127,6 +165,8 @@ jobs:
       # -----------------------------------------------------------------------
       # Upload production artifacts for next deploy + slim CI
       # -----------------------------------------------------------------------
+      # Save the NEW production manifest to S3. This becomes the baseline for
+      # the NEXT deploy's state:modified comparison. Full circle.
       - name: Upload manifest and run_results to S3
         working-directory: ./dbt
         run: |
@@ -134,7 +174,7 @@ jobs:
           aws s3 cp target/run_results.json s3://$S3_ARTIFACTS_BUCKET/run_results/run_results.json
 
       # -----------------------------------------------------------------------
-      # Notification (always runs)
+      # Notification (always runs, whether deploy succeeded or failed)
       # -----------------------------------------------------------------------
       - name: Send email notification
         if: always()

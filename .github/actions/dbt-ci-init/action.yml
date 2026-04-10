@@ -1,6 +1,17 @@
+# =============================================================================
+# dbt CI Init -- Reusable Composite Action
+# =============================================================================
+# This is a shared "function" that every job calls to avoid repeating
+# Python/venv/dbt-deps setup 7+ times across the workflow.
+# Callers invoke it with:  uses: ./.github/actions/dbt-ci-init
+# =============================================================================
+
 name: "dbt CI Init"
 description: "Checkout, Python venv, dbt deps, and optional artifact downloads."
 
+# ---------------------------------------------------------------------------
+# Inputs (parameters callers can pass in -- all optional with defaults)
+# ---------------------------------------------------------------------------
 inputs:
   python_version:
     description: "Python version for the venv"
@@ -19,14 +30,20 @@ inputs:
     default: "false"
     required: false
 
+# ---------------------------------------------------------------------------
+# Steps -- runs directly in the caller's job (composite, not Docker)
+# ---------------------------------------------------------------------------
 runs:
   using: "composite"
   steps:
+    # Install Python (needed because dbt is a Python tool).
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python_version }}
 
+    # Create a virtual environment and install all Python packages from requirements.txt
+    # (dbt-snowflake, sqlfluff, etc.). shell: bash is required in composite actions.
     - name: Create venv and install dependencies
       shell: bash
       run: |
@@ -35,6 +52,8 @@ runs:
         pip install --upgrade pip
         pip install -r requirements.txt
 
+    # Install dbt packages declared in packages.yml (e.g. dbt_utils).
+    # --profiles-dir ./ tells dbt to find profiles.yml in the dbt/ directory, not ~/.dbt/.
     - name: dbt deps
       shell: bash
       working-directory: ./dbt
@@ -42,12 +61,18 @@ runs:
         source ../dbt_venv/bin/activate
         dbt deps --profiles-dir ./
 
+    # --- Conditional artifact downloads ---
+    # Artifacts are files uploaded by Job 1 (setup_env) and downloaded by later jobs.
+    # Each job runs on a fresh VM, so artifacts are how jobs share data.
+
+    # Download the list of changed model names (text file from Job 1).
     - name: Download changed_models artifact
       if: inputs.download_changed_models == 'true'
       uses: actions/download-artifact@v4
       with:
         name: changed_models
 
+    # Download the merge-base manifest for state:modified comparison.
     - name: Download base_manifest artifact
       if: inputs.download_base_manifest == 'true'
       uses: actions/download-artifact@v4
@@ -55,6 +80,7 @@ runs:
         name: base_manifest
         path: dbt/base_state
 
+    # Download the production manifest so dbt clone knows where prod tables live.
     - name: Download prod_manifest artifact
       if: inputs.download_prod_manifest == 'true'
       uses: actions/download-artifact@v4

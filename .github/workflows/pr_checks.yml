@@ -1,18 +1,30 @@
 name: PR Checks
 
+# =============================================================================
+# Trigger: Only run when a PR targeting main is opened, updated, or reopened.
+# Does NOT run on pushes to main -- that's deploy_main.yml's job.
+# =============================================================================
 on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
 
+# If you push 3 commits quickly to a PR, you don't want 3 CI runs stacking up.
+# This groups runs by PR number -- if a new run starts for PR #15,
+# it cancels any in-progress run for PR #15. Saves compute and money.
 concurrency:
   group: pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# Least-privilege: the workflow can read the repo code and read workflow artifacts,
+# but can't write to the repo or do anything else (security best practice).
 permissions:
   contents: read
   actions: read
 
+# Workflow-level env vars -- available to every job.
+# These pull from GitHub Secrets (encrypted values set in repo Settings > Secrets).
+# dbt's profiles.yml reads these to connect to Snowflake as the DBT_CICD user.
 env:
   SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
   SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
@@ -23,67 +35,104 @@ jobs:
   # ---------------------------------------------------------------------------
   # Job 1: Build merge-base manifest and detect changed models
   # ---------------------------------------------------------------------------
+  # This is the brain of the pipeline. It figures out WHAT changed in the PR
+  # by comparing the current branch against the merge-base with main.
+  # ---------------------------------------------------------------------------
+
   setup_env:
     name: Setup & Detect Changes
     runs-on: ubuntu-latest
 
+    # Job outputs -- these let downstream jobs access the results.
+    # changed_models: space-separated list like "stg_airline_reviews int_reviews fct_review"
+    # has_changes: "true" or "false"
     outputs:
       changed_models: ${{ steps.diff.outputs.changed_models }}
       has_changes: ${{ steps.diff.outputs.has_changes }}
 
     steps:
+      # fetch-depth: 0 fetches the ENTIRE git history instead of just the latest commit.
+      # Needed because we must find the merge-base with main and check out old code.
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # Call the reusable composite action to set up Python, venv, and dbt deps.
       - name: ci-init
         uses: ./.github/actions/dbt-ci-init
 
+      # -----------------------------------------------------------------------
+      # Build merge-base manifests (state baseline)
+      # -----------------------------------------------------------------------
+      # We need TWO manifests from the old code:
+      #   1. staging manifest -- for state:modified comparison (find what changed)
+      #   2. prod manifest    -- for dbt clone (knows where production tables live)
+      # -----------------------------------------------------------------------
       - name: Build merge-base manifests (state baseline)
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
 
-          # Compute merge-base with main
+          # Find the common ancestor between the PR branch and main.
+          # Example: if main has A-B-C-D and your branch is A-B-E-F,
+          # the merge-base is commit B (where they diverged).
+          # This gives us the clean "before" snapshot -- only YOUR changes show up.
           BASE_SHA=$(git merge-base ${{ github.sha }} origin/main)
           echo "Using BASE_SHA=$BASE_SHA as state baseline"
 
-          # Materialize the base tree into a sibling folder
+          # Extract the entire repo as it existed at the merge-base into a sibling folder.
+          # git archive streams the old code as a tar file, then tar extracts it.
+          # Now we have two copies: current PR code + old merge-base code.
           mkdir -p ../../dbt_base
           git -C "$(git rev-parse --show-toplevel)" archive "$BASE_SHA" | tar -x -C ../../dbt_base
 
+          # Move into the OLD dbt project and reuse the venv from the current repo.
           cd ../../dbt_base/dbt
           source ../../skytrax_reviews_transformation/dbt_venv/bin/activate
+
+          # Install dbt packages for the old project.
           dbt deps --profiles-dir ./
 
-          # Parse with staging target for state:modified comparison
+          # Parse the old project with staging target.
+          # dbt parse generates manifest.json -- a JSON file describing every model,
+          # its SQL, dependencies, etc. This becomes our "before" snapshot.
           dbt parse --profiles-dir ./ --target staging
+
+          # Copy the old staging manifest back to the current repo's base_state/ folder.
           cd ../../skytrax_reviews_transformation/dbt
           mkdir -p base_state
           cp ../../dbt_base/dbt/target/manifest.json base_state/manifest.json
 
-          # Parse with prod target so dbt clone resolves production schema locations
+          # Parse the old project AGAIN with prod target.
+          # dbt clone (Job 4) needs this to know where production tables live
+          # (which schema/database), since prod and staging resolve to different paths.
           cd ../../dbt_base/dbt
           dbt parse --profiles-dir ./ --target prod
           cd ../../skytrax_reviews_transformation/dbt
           mkdir -p prod_state
           cp ../../dbt_base/dbt/target/manifest.json prod_state/manifest.json
 
+      # -----------------------------------------------------------------------
+      # Detect changed models -- the core of slim CI
+      # -----------------------------------------------------------------------
       - name: Detect changed models
         id: diff
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
 
-          # Parse current project
+          # Parse the CURRENT (PR branch) project to generate its manifest.
           dbt parse --profiles-dir ./ --target staging
 
-          # Check if macro files changed in this PR
+          # Count how many macro files changed. This matters because dbt's
+          # state:modified doesn't always catch models affected by macro changes.
           BASE_SHA=$(git merge-base ${{ github.sha }} origin/main)
           MACRO_CHANGES=$(git diff --name-only "$BASE_SHA" ${{ github.sha }} -- "macros/" | wc -l | xargs)
 
-          # Use merge-base manifest to find changed/new models
+          # Compare current manifest against old manifest (base_state/).
+          # state:modified = SQL or config changed, state:new = brand new model.
+          # --output name gives us model names like "stg_airline_reviews".
           dbt ls \
             --profiles-dir ./ \
             --state base_state \
@@ -94,9 +143,9 @@ jobs:
             --quiet \
             > changed_models.txt 2>/dev/null || true
 
-          # If macros changed but no models were detected, select all models
-          # (macro changes affect dependent models but dbt state comparison
-          # may not always catch them)
+          # Safety net: if macros changed but no models were detected as modified,
+          # select ALL models. Macro changes can affect many models in ways
+          # state:modified might miss.
           CHANGED=$(tr '\n' ' ' < changed_models.txt | xargs)
           if [ -z "$CHANGED" ] && [ "$MACRO_CHANGES" -gt 0 ]; then
             echo "Macro files changed but no models detected -- selecting all models"
@@ -113,6 +162,8 @@ jobs:
           echo "---- Changed models ----"
           cat changed_models.txt || true
 
+          # Write results to $GITHUB_OUTPUT -- this is how steps expose values
+          # to job outputs (and thus to other jobs via needs.setup_env.outputs.*).
           echo "changed_models=$CHANGED" >> "$GITHUB_OUTPUT"
 
           if [ -n "$CHANGED" ]; then
@@ -121,6 +172,9 @@ jobs:
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Upload manifests and changed models list as artifacts.
+      # Artifacts are temporary files shared between jobs in the same workflow run.
+      # retention-days: 3 means they're deleted after 3 days.
       - name: Upload base manifest (staging)
         uses: actions/upload-artifact@v4
         with:
@@ -145,10 +199,13 @@ jobs:
   # ---------------------------------------------------------------------------
   # Job 2: Lint changed SQL files with sqlfluff
   # ---------------------------------------------------------------------------
+  # Runs SQLFluff on only the .sql files that were added or modified in this PR.
+  # || true means linting failures don't fail the pipeline (advisory only).
+  # ---------------------------------------------------------------------------
   lint_sql:
     name: Lint SQL
     runs-on: ubuntu-latest
-    needs: setup_env
+    needs: setup_env # Waits for Job 1 to finish.
 
     steps:
       - name: Checkout code
@@ -163,11 +220,13 @@ jobs:
         run: |
           source dbt_venv/bin/activate
 
+          # Find all added (A) or modified (M) .sql files between merge-base and current commit.
           BASE_SHA=$(git merge-base ${{ github.sha }} origin/main)
           changed_files=$(git diff --name-only --diff-filter=AM "$BASE_SHA" ${{ github.sha }} -- "*.sql" | tr '\n' ' ')
 
           if [ -n "$changed_files" ]; then
             echo "Linting changed files: $changed_files"
+            # || true = advisory only, linting failures won't block the PR.
             sqlfluff lint $changed_files || true
           else
             echo "No changed SQL files to lint."
@@ -176,10 +235,15 @@ jobs:
   # ---------------------------------------------------------------------------
   # Job 3: Compile changed models
   # ---------------------------------------------------------------------------
+  # Compile = turn Jinja+SQL into pure SQL without executing it.
+  # Catches syntax errors and Jinja template issues without hitting Snowflake.
+  # Fast and cheap -- no data warehouse compute used.
+  # ---------------------------------------------------------------------------
   compile_changed:
     name: Compile Changed Models
     runs-on: ubuntu-latest
     needs: setup_env
+    # Only runs if Job 1 detected changed models. Skips entirely otherwise.
     if: needs.setup_env.outputs.has_changes == 'true'
 
     steps:
@@ -198,6 +262,7 @@ jobs:
         run: |
           source ../dbt_venv/bin/activate
 
+          # Read the changed model names from Job 1's output.
           MODELS="${{ needs.setup_env.outputs.changed_models }}"
           if [ -n "$MODELS" ]; then
             echo "Compiling: $MODELS"
@@ -207,11 +272,16 @@ jobs:
           fi
 
   # ---------------------------------------------------------------------------
-  # Job 4: Run changed models with --defer to base state
+  # Job 4: Run changed models in the staging schema
+  # ---------------------------------------------------------------------------
+  # First clones production tables into staging (zero-copy), then runs only
+  # the changed models. This way, changed models can reference upstream
+  # parent tables that exist in staging via the clone.
   # ---------------------------------------------------------------------------
   run_changed:
     name: Run Changed Models
     runs-on: ubuntu-latest
+    # Depends on Job 1 (changed models list) and Job 3 (compilation must pass first).
     needs: [setup_env, compile_changed]
     if: needs.setup_env.outputs.has_changes == 'true'
 
@@ -225,8 +295,12 @@ jobs:
         uses: ./.github/actions/dbt-ci-init
         with:
           download_changed_models: "true"
+          # Need the prod manifest because dbt clone needs to know
+          # where production tables live (which schema/database).
           download_prod_manifest: "true"
 
+      # dbt clone creates zero-copy clones of PRODUCTION tables into the STAGING schema.
+      # Without this, dbt run would fail because parent tables don't exist in staging.
       - name: Clone production tables to staging
         working-directory: ./dbt
         run: |
@@ -236,6 +310,8 @@ jobs:
             --state prod_state \
             --target staging
 
+      # Actually execute the changed models against Snowflake's staging schema.
+      # --fail-fast stops on the first failure instead of trying to run everything.
       - name: Run changed models
         working-directory: ./dbt
         run: |
@@ -256,9 +332,13 @@ jobs:
   # ---------------------------------------------------------------------------
   # Job 5: Test changed models
   # ---------------------------------------------------------------------------
+  # Runs dbt tests (not_null, unique, accepted_values, relationships, etc.)
+  # defined in YAML schema files against the models built in Job 4.
+  # ---------------------------------------------------------------------------
   test_changed:
     name: Test Changed Models
     runs-on: ubuntu-latest
+    # Runs after Job 4 -- models must be built before they can be tested.
     needs: [setup_env, run_changed]
     if: needs.setup_env.outputs.has_changes == 'true'
 
@@ -292,6 +372,11 @@ jobs:
   # ---------------------------------------------------------------------------
   # Job 6: Run downstream models of changed models
   # ---------------------------------------------------------------------------
+  # If you changed stg_airline_reviews, models that DEPEND on it
+  # (like int_reviews, fct_review) also need to be rebuilt.
+  # The "+" suffix in dbt means "this model and all its children (downstream)".
+  # We exclude the changed models themselves since they were already run in Job 4.
+  # ---------------------------------------------------------------------------
   run_downstream:
     name: Run Downstream Models
     runs-on: ubuntu-latest
@@ -316,8 +401,12 @@ jobs:
 
           MODELS="${{ needs.setup_env.outputs.changed_models }}"
           if [ -n "$MODELS" ]; then
-            # Build selection: append + to each model for downstream selection,
-            # then exclude the changed models themselves (already run in Job 4)
+            # For each changed model, append "+" to select it AND all its children.
+            # Then exclude the changed model itself (already run in Job 4).
+            # Example: if MODELS="stg_airline_reviews"
+            #   SELECT_ARGS="stg_airline_reviews+"  (= stg + int + fct)
+            #   EXCLUDE_ARGS="stg_airline_reviews"   (= skip stg itself)
+            #   Result: only runs int_reviews and fct_review.
             SELECT_ARGS=""
             EXCLUDE_ARGS=""
             for model in $MODELS; do
@@ -338,6 +427,10 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Job 7: Test downstream models of changed models
+  # ---------------------------------------------------------------------------
+  # Same logic as Job 6, but runs dbt test instead of dbt run.
+  # Tests the downstream models to make sure your changes didn't break
+  # anything further down the DAG.
   # ---------------------------------------------------------------------------
   test_downstream:
     name: Test Downstream Models
@@ -363,6 +456,7 @@ jobs:
 
           MODELS="${{ needs.setup_env.outputs.changed_models }}"
           if [ -n "$MODELS" ]; then
+            # Same select+exclude pattern as Job 6.
             SELECT_ARGS=""
             EXCLUDE_ARGS=""
             for model in $MODELS; do

@@ -5,6 +5,7 @@
 # These are passed in via variables so nothing sensitive lives in code.
 # -----------------------------------------------------------------------------
 
+# Defining the Snowflake provider
 terraform {
   required_version = ">= 1.5"
 
@@ -16,6 +17,7 @@ terraform {
   }
 }
 
+# Configuring the Snowflake provider
 provider "snowflake" {
   organization_name = var.snowflake_organization_name
   account_name      = var.snowflake_account_name

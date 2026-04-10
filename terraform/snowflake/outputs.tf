@@ -40,6 +40,11 @@ output "vicient_analyst_user" {
   value       = snowflake_user.vicient_analyst.name
 }
 
+output "derek_analyst_user" {
+  description = "Username for Derek's analyst account"
+  value       = snowflake_user.derek_analyst.name
+}
+
 output "analyst_role" {
   description = "Role name used by analyst accounts"
   value       = snowflake_account_role.analyst.name
@@ -48,13 +53,14 @@ output "analyst_role" {
 output "schemas" {
   description = "Map of schema names created in the database"
   value = {
-    raw         = snowflake_schema.raw.name
+    raw          = snowflake_schema.raw.name
     source       = snowflake_schema.source.name
     intermediate = snowflake_schema.intermediate.name
     staging      = snowflake_schema.staging.name
-    marts       = snowflake_schema.marts.name
-    dev_minh    = snowflake_schema.dev_minh.name
-    dev_gina    = snowflake_schema.dev_gina.name
-    dev_vicient = snowflake_schema.dev_vicient.name
+    marts        = snowflake_schema.marts.name
+    dev_minh     = snowflake_schema.dev_minh.name
+    dev_gina     = snowflake_schema.dev_gina.name
+    dev_vicient  = snowflake_schema.dev_vicient.name
+    dev_derek    = snowflake_schema.dev_derek.name
   }
 }
