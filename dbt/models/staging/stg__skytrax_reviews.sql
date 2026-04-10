@@ -8,6 +8,6 @@
 -- Grain: one row per review from source
 
 select
-    row_number() over(order by date_submitted, customer_name) as review_id,
+    row_number() over(order by date_submitted) as review_id,
     *,
 from {{ source('SKYTRAX_REVIEWS', 'AIRLINE_REVIEWS') }}
