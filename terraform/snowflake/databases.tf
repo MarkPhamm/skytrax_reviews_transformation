@@ -11,9 +11,10 @@
 
 # Creating the raw schema
 resource "snowflake_schema" "raw" {
-  database = var.database_name
-  name     = "RAW"
-  comment  = "Raw seed data loaded by dbt seeds"
+  database     = var.database_name
+  name         = "RAW"
+  is_transient = false
+  comment      = "Raw seed data loaded by dbt seeds"
 }
 
 # Creating the source schema
