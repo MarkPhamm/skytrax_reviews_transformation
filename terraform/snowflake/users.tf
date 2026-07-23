@@ -8,7 +8,7 @@ resource "snowflake_user" "prod_dbt" {
   password          = var.prod_dbt_password
   default_warehouse = snowflake_warehouse.compute["XSMALL"].name
   default_role      = snowflake_account_role.transformer.name
-  default_namespace = "${snowflake_database.skytrax.name}.STAGING"
+  default_namespace = "${var.database_name}.STAGING"
   comment           = "Production dbt service account. Managed by Terraform."
 }
 
@@ -18,7 +18,7 @@ resource "snowflake_user" "cicd" {
   password          = var.cicd_user_password
   default_warehouse = snowflake_warehouse.compute["XSMALL"].name
   default_role      = snowflake_account_role.transformer.name
-  default_namespace = "${snowflake_database.skytrax.name}.STAGING"
+  default_namespace = "${var.database_name}.STAGING"
   comment           = "Service account for GitHub Actions CI/CD pipelines. Managed by Terraform."
 }
 
@@ -28,7 +28,7 @@ resource "snowflake_user" "gina_analyst" {
   password          = var.gina_analyst_password
   default_warehouse = snowflake_warehouse.compute["XSMALL"].name
   default_role      = snowflake_account_role.analyst.name
-  default_namespace = "${snowflake_database.skytrax.name}.${snowflake_schema.dev_gina.name}"
+  default_namespace = "${var.database_name}.${snowflake_schema.dev_gina.name}"
   comment           = "Analyst account for Gina. Managed by Terraform."
 }
 
@@ -38,7 +38,7 @@ resource "snowflake_user" "vicient_analyst" {
   password          = var.vicient_analyst_password
   default_warehouse = snowflake_warehouse.compute["XSMALL"].name
   default_role      = snowflake_account_role.analyst.name
-  default_namespace = "${snowflake_database.skytrax.name}.${snowflake_schema.dev_vicient.name}"
+  default_namespace = "${var.database_name}.${snowflake_schema.dev_vicient.name}"
   comment           = "Analyst account for Vicient. Managed by Terraform."
 }
 
@@ -48,7 +48,7 @@ resource "snowflake_user" "derek_analyst" {
   password          = var.derek_analyst_password
   default_warehouse = snowflake_warehouse.compute["XSMALL"].name
   default_role      = snowflake_account_role.analyst.name
-  default_namespace = "${snowflake_database.skytrax.name}.${snowflake_schema.dev_derek.name}"
+  default_namespace = "${var.database_name}.${snowflake_schema.dev_derek.name}"
   comment           = "Analyst account for Derek. Managed by Terraform."
 }
 
@@ -59,7 +59,7 @@ resource "snowflake_user" "derek_analyst" {
 #   password          = var.alex_analyst_password
 #   default_warehouse = snowflake_warehouse.compute["XSMALL"].name
 #   default_role      = snowflake_account_role.analyst.name
-#   default_namespace = "${snowflake_database.skytrax.name}.${snowflake_schema.dev_alex.name}"
+#   default_namespace = "${var.database_name}.${snowflake_schema.dev_alex.name}"
 #   comment           = "Analyst account for Alex. Managed by Terraform."
 # }
 
