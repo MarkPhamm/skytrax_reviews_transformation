@@ -70,6 +70,23 @@ resource "snowflake_grant_privileges_to_account_role" "admin_db" {
 }
 
 # -----------------------------------------------------------------------------
+# Grants -- Tags
+# -----------------------------------------------------------------------------
+# The PII tag on SKYTRAX_REVIEWS_DB.RAW is created/applied outside Terraform.
+# Materializing a model whose columns carry that tag (e.g. dim_customer) requires
+# APPLY on the tag itself, or dbt run fails with "Insufficient privileges to
+# operate on tag 'PII'". Covers both CI (DBT_CICD) and prod (PROD_DBT), since
+# both use the transformer role.
+resource "snowflake_grant_privileges_to_account_role" "transformer_pii_tag_apply" {
+  account_role_name = snowflake_account_role.transformer.name
+  privileges        = ["APPLY"]
+  on_schema_object {
+    object_type = "TAG"
+    object_name = "\"${var.database_name}\".\"RAW\".\"PII\""
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Grants -- Schemas (TRANSFORMER: production schemas read/write)
 # -----------------------------------------------------------------------------
 
