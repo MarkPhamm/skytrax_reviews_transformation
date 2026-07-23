@@ -185,6 +185,7 @@ cython_debug/
 **/dbt_packages/
 **/logs/
 **/prod_state/
+dbt/cred_*.txt
 /configuration.env
 /.cursor
 /.vscode

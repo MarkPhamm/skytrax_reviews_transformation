@@ -1,5 +1,6 @@
 {{ config(
     materialized='table',
+    post_hook="alter table {{ this }} modify column customer_name set masking policy {{ target.database }}.marts.pii_hash_mask",
 ) }}
 
 -- dim_customer.sql
