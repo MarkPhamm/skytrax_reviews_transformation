@@ -1,11 +1,15 @@
 {{ config(
     materialized='table',
+    post_hook="{{ apply_pii_tag(['customer_name', 'nationality']) }}",
 ) }}
 
 -- dim_customer.sql
 -- Customer dimension table
 -- Grain: one row per unique (customer_name, nationality) combination
 -- Surrogate key: generated using dbt_utils for deterministic, idempotent key generation
+-- Governance: customer_name/nationality are tagged as PII post-run; the tag's
+-- masking policy hides values from roles without PII_READER (see extract-load
+-- repo, terraform/snowflake/masking.tf)
 
 with reviews as (
 

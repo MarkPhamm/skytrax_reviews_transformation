@@ -2,10 +2,15 @@ version: 2
 
 models:
 - name: stg__skytrax_reviews
-  description: This table contains reviews from the SKYTRAX_REVIEWS_DB source.
+  description: |
+    This table contains reviews from the SKYTRAX_REVIEWS_DB source.
+    Deduplicated on the natural key (customer_name, nationality, airline_name,
+    date_submitted, review), keeping the latest updated_at per review.
   columns:
   - name: review_id
-    description: Unique identifier for each review.
+    description: |
+      Unique identifier for each review. Deterministic surrogate hash of the
+      natural key (stable across runs), enabling idempotent incremental merges downstream.
     tests:
     - unique
     - not_null

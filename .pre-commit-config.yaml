@@ -1,0 +1,22 @@
+# Local quality gates — mirrors the advisory sqlfluff step in pr_checks.yml.
+# Install with:  pre-commit install
+# Note: the sqlfluff hook uses the dbt templater, so the SNOWFLAKE_* env vars
+# used by dbt/profiles.yml must be set (same as for local dbt runs).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        files: ^dbt/.*\.ya?ml$
+      - id: check-merge-conflict
+
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.4.0
+    hooks:
+      - id: sqlfluff-lint
+        files: ^dbt/(models|macros|tests|snapshots)/.*\.sql$
+        additional_dependencies:
+          - dbt-snowflake==1.9.2
+          - sqlfluff-templater-dbt==3.4.0

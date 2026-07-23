@@ -4,10 +4,40 @@
 
 -- stg__skytrax_reviews.sql
 -- Staging model for raw Skytrax reviews
--- 1:1 with source table with minimal transformations
--- Grain: one row per review from source
+-- Grain: one row per review (deduplicated on the natural key)
+-- Dedup: re-scrapes can land the same review multiple times with a newer
+-- updated_at; keep only the latest copy per natural key.
+-- review_id: deterministic hash of the natural key (stable across runs),
+-- which makes downstream incremental merges idempotent.
+
+with source_data as (
+
+    select
+        *,
+    from {{ source('SKYTRAX_REVIEWS', 'AIRLINE_REVIEWS') }}
+
+),
+
+deduped as (
+
+    select
+        *,
+    from source_data
+    qualify
+        row_number() over (
+            partition by customer_name, nationality, airline_name, date_submitted, review
+            order by updated_at desc
+        ) = 1
+
+)
 
 select
-    row_number() over(order by date_submitted, customer_name) as review_id,
+    {{ dbt_utils.generate_surrogate_key([
+        'customer_name',
+        'nationality',
+        'airline_name',
+        'date_submitted',
+        'review',
+    ]) }} as review_id,
     *,
-from {{ source('SKYTRAX_REVIEWS', 'AIRLINE_REVIEWS') }}
+from deduped
