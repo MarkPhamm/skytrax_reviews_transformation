@@ -13,7 +13,13 @@ sources:
       - name: AIRLINE_REVIEWS
         description: One record per review.
         config:
+          # Loads are scheduled daily by a laptop-local Airflow instance, so a
+          # missed day or two is expected (laptop asleep/off). Warn only after
+          # 3 missed days; page (error) after a full week without new data.
+          # If sparse review categories (e.g. seats, lounges) are ever added as
+          # sources, they update far less often and would need looser
+          # per-table thresholds than this one.
           freshness:
-            error_after: {count: 1, period: day}
-            warn_after: {count: 12, period: hour}
+            warn_after: {count: 3, period: day}
+            error_after: {count: 7, period: day}
           loaded_at_field: updated_at
