@@ -205,7 +205,7 @@ How we host dbt docs with CloudFront + S3 (and why we switched from EC2).
 pip install -r requirements-dev.txt
 
 # Set Snowflake env vars
-export SNOWFLAKE_ACCOUNT=nvnjoib-on80344
+export SNOWFLAKE_ACCOUNT=<your-account-locator>
 export SNOWFLAKE_USER=your_user
 export SNOWFLAKE_PASSWORD=your_password
 export SNOWFLAKE_ROLE=SKYTRAX_ANALYST
@@ -259,7 +259,7 @@ setup.cfg                   SQLFluff config
 
 | Secret | Description |
 | -------- | ------------- |
-| `SNOWFLAKE_ACCOUNT` | `nvnjoib-on80344` |
+| `SNOWFLAKE_ACCOUNT` | `<your-account-locator>` |
 | `SNOWFLAKE_USER` | `DBT_CICD` |
 | `SNOWFLAKE_PASSWORD` | Password for DBT_CICD user |
 | `SNOWFLAKE_ROLE` | `SKYTRAX_TRANSFORMER` |

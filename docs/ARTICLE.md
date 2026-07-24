@@ -230,7 +230,7 @@ Now the Snowflake infrastructure is ready. Let's connect dbt to it and run our m
 Set these based on your Snowflake user. Each developer gets their own dev schema:
 
 ```bash
-export SNOWFLAKE_ACCOUNT=nvnjoib-on80344
+export SNOWFLAKE_ACCOUNT=<your-account-locator>
 export SNOWFLAKE_USER=your_user
 export SNOWFLAKE_PASSWORD=your_password
 export SNOWFLAKE_ROLE=SKYTRAX_ANALYST
@@ -280,8 +280,7 @@ Once there's a production manifest in S3, you can run only your changed models l
 
 ```bash
 mkdir -p dbt/prod_state
-curl -o dbt/prod_state/manifest.json \
-  https://skytrax-reviews-dbt-artifacts-203110101827.s3.amazonaws.com/manifests/manifest.json
+aws s3 cp s3://<artifacts-bucket>/manifests/manifest.json dbt/prod_state/manifest.json
 
 cd dbt
 dbt run \
@@ -292,7 +291,7 @@ dbt run \
   --profiles-dir ./
 ```
 
-This is the same pattern the CD pipeline uses — only rebuild what you changed, reference production for everything else. The manifest is publicly readable from S3 (the bucket policy allows `s3:GetObject` on the `manifests/*` prefix).
+This is the same pattern the CD pipeline uses — only rebuild what you changed, reference production for everything else. The artifacts bucket is private, so the download is an authenticated `aws s3 cp` (your own AWS credentials locally, the OIDC role in CI).
 
 # Step 4: Set up AWS Infrastructure with Terraform
 
@@ -354,7 +353,7 @@ Serves dbt docs globally via CloudFront CDN. Contains three resources:
 
 - **Origin Access Control (OAC)** — allows CloudFront to read from S3 without making the bucket public. CloudFront signs every request to S3 using SigV4, so the bucket stays private.
 - **CloudFront Distribution** — the CDN itself. Points to the `docs/` prefix in the S3 bucket, serves `index.html` as the default root object, caches for 5 minutes (`default_ttl = 300`), and redirects HTTP to HTTPS.
-- **S3 Bucket Policy** — two policy statements: one allows CloudFront to read any object via OAC, and one allows public read on the `manifests/*` prefix (so developers can `curl` the production manifest for local defer builds).
+- **S3 Bucket Policy** — a single statement that allows CloudFront to read objects via OAC. Everything else (including `manifests/*`) requires authenticated access -- developers fetch the production manifest with `aws s3 cp`, never a public URL.
 
 Why CloudFront instead of EC2? I actually built the EC2 + nginx approach first (the code is still in `dissabled/ec2.tf.disabled` and `dissabled/vpc.tf.disabled`). It worked, but it cost ~$8/month, required OS patching, needed a cron job to sync from S3, and required a whole VPC setup (subnet, internet gateway, route table, security group). CloudFront is $0 on the free tier, fully managed, instant updates, and needs only 3 Terraform resources. The EC2 approach was more educational, but for a static site like dbt docs, CloudFront is the right tool.
 
@@ -441,7 +440,7 @@ Go to your GitHub repo → Settings → Secrets and variables → Actions. Add t
 
 | Secret | Value | Where to get it |
 | ------ | ----- | --------------- |
-| `SNOWFLAKE_ACCOUNT` | `nvnjoib-on80344` | Your Snowflake account identifier |
+| `SNOWFLAKE_ACCOUNT` | `<your-account-locator>` | Your Snowflake account identifier |
 | `SNOWFLAKE_USER` | `DBT_CICD` | The CI/CD service account from Step 2 |
 | `SNOWFLAKE_PASSWORD` | (password you set) | From `terraform.tfvars` |
 | `SNOWFLAKE_ROLE` | `SKYTRAX_TRANSFORMER` | The role with prod schema access |
@@ -531,7 +530,7 @@ The live docs are at: **<https://d38l3fc9bckvbz.cloudfront.net>**
 
 ![cloudfront docs](../assets/aws/cloudfont_dbt_docs.png)
 
-The bucket is private — CloudFront accesses it via Origin Access Control (OAC). This means nobody can bypass CloudFront and hit S3 directly (except for the `manifests/*` prefix, which is public so developers can `curl` the production manifest for local defer builds).
+The bucket is private — CloudFront accesses it via Origin Access Control (OAC). This means nobody can bypass CloudFront and hit S3 directly; developers fetch the production manifest with an authenticated `aws s3 cp` for local defer builds.
 
 # Step 7: Set up Local Airflow (Optional)
 

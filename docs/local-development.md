@@ -21,7 +21,7 @@ pip install -r requirements-dev.txt  # includes dbt + dev tools (pandas, ipykern
 Set these based on your Snowflake user. Each developer has their own dev schema (`SNOWFLAKE_SCHEMA`).
 
 ```bash
-export SNOWFLAKE_ACCOUNT=nvnjoib-on80344
+export SNOWFLAKE_ACCOUNT=<your-account-locator>
 export SNOWFLAKE_USER=your_user            # your Snowflake username
 export SNOWFLAKE_PASSWORD=your_password
 export SNOWFLAKE_ROLE=SKYTRAX_ANALYST
@@ -51,10 +51,10 @@ Download the production manifest and run only your changed models locally,
 deferring unchanged models to production tables:
 
 ```bash
-# Download production manifest (public, no credentials needed)
+# Download production manifest (authenticated -- the artifacts bucket is
+# private; use your AWS credentials)
 mkdir -p dbt/prod_state
-curl -o dbt/prod_state/manifest.json \
-  https://skytrax-reviews-dbt-artifacts-203110101827.s3.amazonaws.com/manifests/manifest.json
+aws s3 cp s3://<artifacts-bucket>/manifests/manifest.json dbt/prod_state/manifest.json
 ```
 
 Then run with `--defer --favor-state`:
@@ -76,7 +76,7 @@ changed, reference production for everything else.
 with a single command:
 
 ```bash
-alias get_dbt_manifest='mkdir -p ~/personal/project/skytrax_reviews_transformation/dbt/prod_state && curl -o ~/personal/project/skytrax_reviews_transformation/dbt/prod_state/manifest.json https://skytrax-reviews-dbt-artifacts-203110101827.s3.amazonaws.com/manifests/manifest.json'
+alias get_dbt_manifest='mkdir -p ~/personal/project/skytrax_reviews_transformation/dbt/prod_state && aws s3 cp s3://<artifacts-bucket>/manifests/manifest.json ~/personal/project/skytrax_reviews_transformation/dbt/prod_state/manifest.json'
 ```
 
 ---

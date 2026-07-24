@@ -33,14 +33,15 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "dbt_artifacts" {
   }
 }
 
-# Block public ACLs but allow bucket policies (needed for public manifest read)
+# Block ALL public access. Manifest reads are authenticated (OIDC role in CI,
+# personal AWS credentials locally); docs are served only through CloudFront OAC.
 resource "aws_s3_bucket_public_access_block" "dbt_artifacts" {
   bucket = aws_s3_bucket.dbt_artifacts.id
 
   block_public_acls       = true
-  block_public_policy     = false # Allow public read policy on manifests/ prefix
+  block_public_policy     = true
   ignore_public_acls      = true
-  restrict_public_buckets = false # Allow public read policy on manifests/ prefix
+  restrict_public_buckets = true
 }
 
 # Clean up old artifact versions after 30 days to save storage costs

@@ -67,6 +67,9 @@ resource "aws_cloudfront_distribution" "docs" {
 
 # --- S3 Bucket Policy ---
 # Allow CloudFront to read objects from the bucket via OAC.
+# The bucket is otherwise fully private: the CD pipeline and local defer
+# builds fetch manifests/manifest.json with authenticated `aws s3 cp`
+# (OIDC role in CI, personal AWS credentials locally) -- never a public URL.
 
 resource "aws_s3_bucket_policy" "cloudfront_access" {
   bucket = aws_s3_bucket.dbt_artifacts.id
@@ -87,13 +90,6 @@ resource "aws_s3_bucket_policy" "cloudfront_access" {
             "AWS:SourceArn" = aws_cloudfront_distribution.docs.arn
           }
         }
-      },
-      {
-        Sid       = "PublicReadManifests"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.dbt_artifacts.arn}/manifests/*"
       }
     ]
   })
