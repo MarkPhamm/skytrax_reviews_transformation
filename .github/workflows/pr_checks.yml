@@ -205,7 +205,7 @@ jobs:
   # Job 2: Lint changed SQL files with sqlfluff
   # ---------------------------------------------------------------------------
   # Runs SQLFluff on only the .sql files that were added or modified in this PR.
-  # || true means linting failures don't fail the pipeline (advisory only).
+  # Lint violations FAIL the job -- style is enforced, not advisory.
   # ---------------------------------------------------------------------------
   lint_sql:
     name: Lint SQL
@@ -231,8 +231,8 @@ jobs:
 
           if [ -n "$changed_files" ]; then
             echo "Linting changed files: $changed_files"
-            # || true = advisory only, linting failures won't block the PR.
-            sqlfluff lint $changed_files || true
+            # A non-zero exit fails the job: lint violations block the PR.
+            sqlfluff lint $changed_files
           else
             echo "No changed SQL files to lint."
           fi

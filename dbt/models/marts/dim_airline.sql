@@ -17,8 +17,7 @@ with reviews as (
 
 distinct_airlines as (
 
-    select
-        distinct airline_name,
+    select distinct airline_name,
     from reviews
 
 ),
