@@ -45,6 +45,15 @@ resource "snowflake_schema" "marts" {
   comment  = "Mart models -- business-ready tables for BI tools"
 }
 
+# Creating the snapshots schema (dbt snapshots: snapshots/snap_skytrax_reviews.sql
+# targets schema='SNAPSHOTS'; managed here so grants don't depend on dbt
+# implicitly creating it)
+resource "snowflake_schema" "snapshots" {
+  database = var.database_name
+  name     = "SNAPSHOTS"
+  comment  = "SCD2 history captured by dbt snapshot"
+}
+
 # Creating the dev_minh schema
 resource "snowflake_schema" "dev_minh" {
   database = var.database_name
