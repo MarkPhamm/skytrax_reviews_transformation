@@ -1,5 +1,8 @@
 {{ config(
-    materialized='table',
+    materialized='incremental',
+    unique_key='review_key',
+    incremental_strategy='merge',
+    on_schema_change='append_new_columns',
 ) }}
 
 -- fct_review.sql
@@ -7,12 +10,22 @@
 -- Grain: one row per review submission
 -- Surrogate key: generated using dbt_utils for deterministic, idempotent key generation
 -- All measures and dimensions are foreign keys to conformed dimensions
+-- Incremental: merge on review_key; only rows with a source updated_at newer
+-- than the high-water mark are processed, minus a lookback window
+-- (var incremental_lookback_days, default 3) to absorb late-arriving updates.
+-- Backfill with: dbt run -s fct_review --full-refresh
 
 with base as (
 
     select
         *,
     from {{ ref('int_reviews_cleaned') }}
+    {% if is_incremental() %}
+        where updated_at > (
+            select dateadd('day', -{{ var('incremental_lookback_days', 3) }}, max(source_updated_at))
+            from {{ this }}
+        )
+    {% endif %}
 
 ),
 

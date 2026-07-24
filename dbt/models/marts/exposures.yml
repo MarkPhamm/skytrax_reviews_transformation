@@ -1,0 +1,21 @@
+version: 2
+
+exposures:
+  - name: spirit_airlines_dashboard
+    label: Spirit Airlines Review Dashboard
+    type: dashboard
+    maturity: medium
+    url: https://github.com/MiaTran1112/spirit_airlines_dashboard
+    description: >
+      Mode Analytics dashboard analyzing Spirit Airlines customer satisfaction:
+      average review rating, recommendation rate, rating bands, and breakdowns
+      by service, seat type, traveller type, aircraft, airport, and year.
+      Queries live in the spirit_airlines_dashboard repo (sql/) and run against
+      MARTS.FCT_REVIEW_ENRICHED.
+    depends_on:
+      - ref('fct_review_enriched')
+      - ref('dim_aircraft')
+      - ref('dim_location')
+    owner:
+      name: Mark Pham
+      email: minh.pham@insurify.com

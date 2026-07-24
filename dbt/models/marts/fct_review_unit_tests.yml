@@ -1,0 +1,43 @@
+version: 2
+
+unit_tests:
+  - name: test_fct_review_rating_enrichment
+    description: >
+      average_rating averages only the non-null sub-ratings; rating_band
+      buckets bad (<2) / medium (2-<4) / good (>=4) / unknown (null average);
+      has_layover is false when transit is 'unknown'.
+    model: fct_review
+    overrides:
+      macros:
+        is_incremental: false
+    given:
+      - input: ref('int_reviews_cleaned')
+        rows:
+          - {review_id: r1, customer_name: jane doe, nationality: usa, date_submitted: 2026-01-10, date_flown: 2026-01-01, airline_name: spirit airlines, origin_city: miami, origin_airport: MIA, destination_city: dallas, destination_airport: DFW, transit_city: unknown, transit_airport: unknown, aircraft_model: Airbus A320, seat_comfort: 4, cabin_staff_service: 5, updated_at: 2026-01-11 00:00:00}
+          - {review_id: r2, customer_name: jane doe, nationality: usa, date_submitted: 2026-01-10, date_flown: 2026-01-01, airline_name: spirit airlines, origin_city: miami, origin_airport: MIA, destination_city: dallas, destination_airport: DFW, transit_city: unknown, transit_airport: unknown, aircraft_model: Airbus A320, seat_comfort: 1, cabin_staff_service: 1, food_and_beverages: 1, inflight_entertainment: 1, ground_service: 1, wifi_and_connectivity: 1, value_for_money: 1, updated_at: 2026-01-11 00:00:00}
+          - {review_id: r3, customer_name: jane doe, nationality: usa, date_submitted: 2026-01-10, date_flown: 2026-01-01, airline_name: spirit airlines, origin_city: miami, origin_airport: MIA, destination_city: dallas, destination_airport: DFW, transit_city: unknown, transit_airport: unknown, aircraft_model: Airbus A320, seat_comfort: 2, cabin_staff_service: 2, updated_at: 2026-01-11 00:00:00}
+          - {review_id: r4, customer_name: jane doe, nationality: usa, date_submitted: 2026-01-10, date_flown: 2026-01-01, airline_name: spirit airlines, origin_city: miami, origin_airport: MIA, destination_city: dallas, destination_airport: DFW, transit_city: unknown, transit_airport: unknown, aircraft_model: Airbus A320, updated_at: 2026-01-11 00:00:00}
+      - input: ref('dim_customer')
+        rows:
+          - {customer_id: c1, customer_name: jane doe, nationality: usa}
+      - input: ref('dim_airline')
+        rows:
+          - {airline_id: a1, airline_name: spirit airlines}
+      - input: ref('dim_date')
+        rows:
+          - {date_id: 2026-01-10}
+          - {date_id: 2026-01-01}
+      - input: ref('dim_location')
+        rows:
+          - {location_id: l1, city: miami, airport: MIA}
+          - {location_id: l2, city: dallas, airport: DFW}
+          - {location_id: l3, city: unknown, airport: unknown}
+      - input: ref('dim_aircraft')
+        rows:
+          - {aircraft_id: ac1, aircraft_model: Airbus A320}
+    expect:
+      rows:
+        - {review_id: r1, average_rating: 4.5, rating_band: good, has_layover: false}
+        - {review_id: r2, average_rating: 1.0, rating_band: bad, has_layover: false}
+        - {review_id: r3, average_rating: 2.0, rating_band: medium, has_layover: false}
+        - {review_id: r4, average_rating: null, rating_band: unknown, has_layover: false}

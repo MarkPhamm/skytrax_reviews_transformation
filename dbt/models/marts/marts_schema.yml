@@ -7,8 +7,11 @@ models:
       Includes calculated average ratings and categorical rating bands.
       All foreign keys reference conformed dimensions.
       Grain: one row per review submission.
+      Materialized incrementally (merge on review_key) using the source
+      updated_at high-water mark with a configurable lookback window.
     columns:
       - name: review_key
+        data_type: varchar
         description: Surrogate key for the review fact (deterministic, idempotent).
         tests:
           - unique
@@ -18,14 +21,16 @@ models:
             datatypes: string
 
       - name: review_id
-        description: Original review identifier from source system.
+        data_type: varchar
+        description: Review identifier — deterministic hash of the review natural key, assigned in staging.
         tests:
           - not_null
         config:
           meta:
-            datatypes: integer
+            datatypes: string
 
       - name: customer_id
+        data_type: varchar
         description: Foreign key to dim_customer.
         tests:
           - not_null
@@ -38,6 +43,7 @@ models:
             datatypes: string
 
       - name: airline_id
+        data_type: varchar
         description: Foreign key to dim_airline.
         tests:
           - not_null
@@ -50,6 +56,7 @@ models:
             datatypes: string
 
       - name: date_submitted_id
+        data_type: date
         description: Foreign key to dim_date (submission date).
         tests:
           - not_null
@@ -62,6 +69,7 @@ models:
             datatypes: date
 
       - name: date_flown_id
+        data_type: date
         description: Foreign key to dim_date (flight date).
         tests:
           - relationships:
@@ -73,6 +81,7 @@ models:
             datatypes: date
 
       - name: origin_location_id
+        data_type: varchar
         description: Foreign key to dim_location (origin).
         tests:
           - not_null
@@ -85,6 +94,7 @@ models:
             datatypes: string
 
       - name: destination_location_id
+        data_type: varchar
         description: Foreign key to dim_location (destination).
         tests:
           - not_null
@@ -97,6 +107,7 @@ models:
             datatypes: string
 
       - name: transit_location_id
+        data_type: varchar
         description: Foreign key to dim_location (transit stop).
         tests:
           - not_null
@@ -109,6 +120,7 @@ models:
             datatypes: string
 
       - name: aircraft_id
+        data_type: varchar
         description: Foreign key to dim_aircraft.
         tests:
           - not_null
@@ -121,6 +133,7 @@ models:
             datatypes: string
 
       - name: is_verified
+        data_type: boolean
         description: Whether the review was verified by the airline.
         tests:
           - accepted_values:
@@ -131,6 +144,7 @@ models:
             datatypes: boolean
 
       - name: seat_type
+        data_type: varchar
         description: Type of seat purchased (Premium Economy, Business Class, Economy Class, First Class).
         tests:
           - accepted_values:
@@ -141,6 +155,7 @@ models:
             datatypes: string
 
       - name: type_of_traveller
+        data_type: varchar
         description: Category of traveller (Business, Couple Leisure, Family Leisure, Solo Leisure).
         tests:
           - accepted_values:
@@ -151,6 +166,7 @@ models:
             datatypes: string
 
       - name: has_layover
+        data_type: boolean
         description: Whether the flight included a transit stop.
         tests:
           - not_null
@@ -162,6 +178,7 @@ models:
             datatypes: boolean
 
       - name: seat_comfort
+        data_type: number
         description: Seat comfort rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -173,6 +190,7 @@ models:
             datatypes: integer
 
       - name: cabin_staff_service
+        data_type: number
         description: Cabin staff service rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -184,6 +202,7 @@ models:
             datatypes: integer
 
       - name: food_and_beverages
+        data_type: number
         description: Food and beverages rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -195,6 +214,7 @@ models:
             datatypes: integer
 
       - name: inflight_entertainment
+        data_type: number
         description: Inflight entertainment rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -206,6 +226,7 @@ models:
             datatypes: integer
 
       - name: ground_service
+        data_type: number
         description: Ground service rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -217,6 +238,7 @@ models:
             datatypes: integer
 
       - name: wifi_and_connectivity
+        data_type: number
         description: WiFi and connectivity rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -228,6 +250,7 @@ models:
             datatypes: integer
 
       - name: value_for_money
+        data_type: number
         description: Value for money rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -239,6 +262,7 @@ models:
             datatypes: integer
 
       - name: recommended
+        data_type: boolean
         description: Whether the reviewer recommends the airline.
         tests:
           - accepted_values:
@@ -249,6 +273,7 @@ models:
             datatypes: boolean
 
       - name: average_rating
+        data_type: number
         description: |
           Calculated average rating across all seven sub-ratings.
           Computed using only non-null sub-ratings. Range 0–5; null if all sub-ratings null.
@@ -263,6 +288,7 @@ models:
             datatypes: numeric
 
       - name: rating_band
+        data_type: varchar
         description: |
           Categorical band derived from average_rating.
           Bands: 'bad' (0–<2), 'medium' (2–<4), 'good' (4–5), 'unknown' (null).
@@ -276,12 +302,14 @@ models:
             datatypes: string
 
       - name: review_text
+        data_type: varchar
         description: Full text of the review comment.
         config:
           meta:
             datatypes: string
 
       - name: source_updated_at
+        data_type: timestamp_ntz
         description: Timestamp when the record was last updated in the source system.
         tests:
           - not_null
@@ -290,6 +318,7 @@ models:
             datatypes: timestamp
 
       - name: dbt_loaded_at
+        data_type: timestamp_ltz
         description: Timestamp when the record was loaded by dbt.
         tests:
           - not_null
@@ -298,9 +327,25 @@ models:
             datatypes: timestamp
 
     config:
-      meta:
-        contracts:
-          enabled: true
+      contract:
+        enforced: true
+
+# ---
+
+  - name: fct_review_enriched
+    description: |
+      Thin presentation view over fct_review for BI consumption (Mode dashboards).
+      Adds the denormalized airline name; grain identical to fct_review.
+    columns:
+      - name: review_key
+        description: Surrogate key for the review fact (from fct_review).
+        tests:
+          - unique
+          - not_null
+      - name: airline
+        description: Denormalized airline name from dim_airline.
+        tests:
+          - not_null
 
 # ---
 

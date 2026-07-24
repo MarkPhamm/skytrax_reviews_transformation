@@ -1,12 +1,15 @@
 {{ config(
     materialized='table',
-    post_hook="alter table {{ this }} modify column customer_name set masking policy {{ target.database }}.marts.pii_hash_mask",
+    post_hook="{{ apply_pii_mask(['customer_name', 'nationality']) }}",
 ) }}
 
 -- dim_customer.sql
 -- Customer dimension table
 -- Grain: one row per unique (customer_name, nationality) combination
 -- Surrogate key: generated using dbt_utils for deterministic, idempotent key generation
+-- Governance: customer_name/nationality are masked post-run via PII_HASH_MASK
+-- (terraform/snowflake/masking_policies.tf) -- SKYTRAX_ADMIN/SKYTRAX_TRANSFORMER
+-- see real values, every other role (e.g. SKYTRAX_ANALYST) sees a SHA-256 hash.
 
 with reviews as (
 
