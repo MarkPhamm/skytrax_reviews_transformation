@@ -98,3 +98,16 @@ Verify with `describe table SKYTRAX_REVIEWS_DB.MARTS.FCT_REVIEW;` before
 re-running/re-triggering the deploy — a stale local checkout will silently
 full-refresh using the *old* model code and look like it worked without
 actually fixing anything.
+
+## GDPR erase
+
+Hard-delete a review from the fact + snapshot (shared dims are left alone):
+
+```bash
+dbt seed -s gdpr_erased_reviews
+dbt run-operation gdpr_erase --args '{review_id: "<id>"}'
+# or: --args '{customer_name: "Jane Doe"}'
+```
+
+Erased IDs are logged to the `gdpr_erased_reviews` seed table for exclusion.
+

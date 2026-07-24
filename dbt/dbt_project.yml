@@ -53,5 +53,9 @@ seeds:
       +enabled: true
       +tags: ['seeds']
       +schema: RAW
+    gdpr_erased_reviews:
+      +enabled: true
+      +tags: ['seeds', 'gdpr']
+      +schema: MARTS
 flags:
   require_generic_test_arguments_property: true
