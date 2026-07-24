@@ -2,7 +2,7 @@
     materialized='incremental',
     unique_key='review_key',
     incremental_strategy='merge',
-    on_schema_change='append_new_columns',
+    on_schema_change='fail',
 ) }}
 
 -- fct_review.sql
