@@ -18,6 +18,7 @@ locals {
     intermediate = snowflake_schema.intermediate.name
     staging      = snowflake_schema.staging.name
     marts        = snowflake_schema.marts.name
+    snapshots    = snowflake_schema.snapshots.name
   }
 
   # Per-user dev schemas
