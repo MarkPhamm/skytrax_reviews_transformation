@@ -86,6 +86,11 @@ aws s3 sync target/ s3://<bucket>/docs/ \
 Generates the static docs site (`index.html`, `catalog.json`,
 `manifest.json`) and syncs it to S3.
 
+**Elementary (`edr report`):** after the Elementary schema is bootstrapped
+in prod, CD should also run `edr report` and publish the HTML beside dbt
+docs (e.g. `s3://…/edr/`). A commented TODO step lives in
+`deploy_main.yml`; full notes are in [`observability.md`](./observability.md).
+
 #### Step 5: Invalidate CloudFront Cache
 
 ```bash

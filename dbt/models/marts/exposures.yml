@@ -5,15 +5,16 @@ exposures:
     label: Spirit Airlines Review Dashboard
     type: dashboard
     maturity: medium
-    # TODO: replace with live Mode report URL (this points at the dashboard's
-    # GitHub repo, not the dashboard itself)
+    # Mode workspaces are private — point at the dashboard repo (PDF + SQL).
+    # Swap for the live Mode report URL when the workspace link is shareable.
     url: https://github.com/MiaTran1112/spirit_airlines_dashboard
     description: >
-      Mode Analytics dashboard analyzing Spirit Airlines customer satisfaction:
-      average review rating, recommendation rate, rating bands, and breakdowns
-      by service, seat type, traveller type, aircraft, airport, and year.
-      Queries live in the spirit_airlines_dashboard repo (sql/) and run against
-      MARTS.FCT_REVIEW_ENRICHED.
+      Mode Analytics dashboard analyzing Spirit Airlines customer satisfaction
+      (~4,671 reviews, 2015–2025): average review rating, recommendation rate,
+      rating bands, and breakdowns by service, seat type, traveller type,
+      aircraft, airport, and year. Queries live in the spirit_airlines_dashboard
+      repo (sql/) and run against MARTS.FCT_REVIEW_ENRICHED. PDF export is in
+      that repo under dashboard/.
     depends_on:
       - ref('fct_review_enriched')
       - ref('dim_aircraft')

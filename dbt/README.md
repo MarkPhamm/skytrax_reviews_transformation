@@ -50,9 +50,29 @@ Targets: `dev` (default), `staging` (CI), `prod` (deploy) — see `profiles.yml`
   accepted_values on categoricals, `dbt_expectations` range checks on ratings.
 - **Unit test**: `test_fct_review_rating_enrichment` mocks all inputs and
   asserts the `average_rating`/`rating_band` derivation.
-- **Singular test**: `tests/assert_fct_review_one_row_per_review_id.sql`
-  guards the dedup + merge-key invariant.
+- **Singular tests**:
+  - `tests/assert_fct_review_one_row_per_review_id.sql` — dedup + merge-key
+    invariant (error).
+  - `tests/assert_spirit_aircraft_airbus.sql` — Spirit Airlines reviews should
+    only map to Airbus/Unknown manufacturers (warn). Free-text aircraft fields
+    can invent impossible types; this quarantines them without failing the build.
+- **Elementary**: `elementary.volume_anomalies` on `fct_review` (warn) — see
+  `../docs/observability.md`.
 - **Source freshness**: warn 12h / error 1d on `RAW.AIRLINE_REVIEWS.updated_at`.
+
+## GDPR erasure (demo)
+
+Hard-delete a review from the fact + snapshot (dims are left alone — shared
+keys). Seed `gdpr_erased_reviews` first, then:
+
+```bash
+dbt seed --select gdpr_erased_reviews
+dbt run-operation gdpr_erase --args '{review_id: "<review_id>"}'
+# or:
+dbt run-operation gdpr_erase --args '{customer_name: "Jane Doe"}'
+```
+
+Append erased ids to `seeds/gdpr_erased_reviews.csv` so they stay in git.
 
 ## CI/CD
 

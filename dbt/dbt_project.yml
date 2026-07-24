@@ -47,12 +47,22 @@ models:
       +enabled: true
       +tags: ['marts']
 
+  # Elementary observability models (artifacts, test results, anomaly scores).
+  # Package already registers on-run-start / on-run-end hooks — no local
+  # upload_dbt_artifacts() hook needed. See docs/observability.md.
+  elementary:
+    +schema: elementary
+
 seeds:
   skytrax_transformation:
     review:
       +enabled: true
       +tags: ['seeds']
       +schema: RAW
+    gdpr_erased_reviews:
+      +enabled: true
+      +tags: ['seeds', 'gdpr']
+      +schema: MARTS
 
 # Persist the failing rows of every data test so failures can be inspected
 # with SQL instead of re-running the test. With our generate_schema_name
@@ -64,3 +74,6 @@ data_tests:
 
 flags:
   require_generic_test_arguments_property: true
+  # Needed so macros/elementary_materialization.sql can override the built-in
+  # test materialization for Elementary anomaly tests on Snowflake.
+  require_explicit_package_overrides_for_builtin_materializations: false

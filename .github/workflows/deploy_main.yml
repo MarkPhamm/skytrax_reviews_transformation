@@ -189,6 +189,23 @@ jobs:
           source ../dbt_venv/bin/activate
           dbt docs generate --profiles-dir ./ --target prod
 
+      # TODO(observability): enable Elementary HTML report publish once the
+      # elementary schema has been bootstrapped in prod (`dbt run -s elementary`)
+      # and CloudFront/S3 pathing for /edr/ is confirmed. See docs/observability.md.
+      # - name: Generate Elementary edr report
+      #   working-directory: ./dbt
+      #   continue-on-error: true
+      #   run: |
+      #     source ../dbt_venv/bin/activate
+      #     edr report \
+      #       --profiles-dir ./ \
+      #       --profile-target prod \
+      #       --file-path ../edr_report
+      # - name: Upload Elementary edr report to S3
+      #   if: hashFiles('edr_report/**') != ''
+      #   run: |
+      #     aws s3 sync edr_report/ s3://$S3_ARTIFACTS_BUCKET/edr/ --delete
+
       # Upload ONLY the three files the dbt docs site needs. target/ also holds
       # compiled SQL, run artifacts, and logs -- none of that belongs on a
       # publicly served docs bucket. (--exclude '*' first, then include the

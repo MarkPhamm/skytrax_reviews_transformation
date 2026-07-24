@@ -303,7 +303,7 @@ models:
 
       - name: review_text
         data_type: varchar
-        description: Full text of the review comment.
+        description: Full text of the review comment (left unmasked for BI readability).
         config:
           meta:
             datatypes: string
@@ -326,9 +326,25 @@ models:
           meta:
             datatypes: timestamp
 
+    # Elementary volume anomaly: warn if daily row counts on source_updated_at
+    # drift vs recent history. Requires `dbt run -s elementary` once so the
+    # edr schema tables exist. See docs/observability.md.
+    tests:
+      - elementary.volume_anomalies:
+          arguments:
+            timestamp_column: source_updated_at
+            time_bucket:
+              period: day
+              count: 1
+          config:
+            severity: warn
+            tags: ['elementary']
+
     config:
       contract:
         enforced: true
+      elementary:
+        timestamp_column: source_updated_at
 
 # ---
 
