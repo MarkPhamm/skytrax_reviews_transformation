@@ -273,7 +273,8 @@ models:
             datatypes: boolean
 
       - name: average_rating
-        data_type: number
+        # DEMO BREAK: intentional type drift — contract.enforced should fail CI
+        data_type: varchar
         description: |
           Calculated average rating across all seven sub-ratings.
           Computed using only non-null sub-ratings. Range 0–5; null if all sub-ratings null.
