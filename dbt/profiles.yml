@@ -12,6 +12,7 @@ skytrax_transformation:
       threads: 10
       warehouse: SKYTRAX_COMPUTE_XSMALL
       client_session_keep_alive: False
+      query_tag: local_dev
 
     prod:
       type: snowflake
