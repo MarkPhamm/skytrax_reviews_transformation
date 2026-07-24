@@ -144,7 +144,8 @@ final as (
         is_verified,
         seat_type,
         type_of_traveller,
-        seat_comfort,
+        -- DEMO BREAK: rating=7 must fail dbt_expectations 1-5 range test
+        7 as seat_comfort,
         cabin_staff_service,
         food_and_beverages,
         inflight_entertainment,
