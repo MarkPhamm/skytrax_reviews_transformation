@@ -57,8 +57,44 @@ Targets: `dev` (default), `staging` (CI), `prod` (deploy) — see `profiles.yml`
 ## CI/CD
 
 - `pr_checks.yml` — Slim CI: sqlfluff, compile, `dbt clone` prod → staging,
-  build/test only `state:modified` (+ downstream).
+  then build/test `state:modified+`/`state:new+` (the `+` matters — see below)
+  with `--full-refresh` in the staging build steps.
 - `deploy_main.yml` — deploy on merge to `main` + weekly cron: `dbt build
   --select state:modified+ --defer --favor-state` against the prod manifest on
   S3, then publish dbt docs to CloudFront.
 - `.pre-commit-config.yaml` (repo root) mirrors the lint gates locally.
+
+### Gotcha: breaking changes to an existing incremental model
+
+`state:modified` alone only selects models whose *own* file changed — not
+their downstream dependents. That's a problem combined with `dbt clone`:
+`dbt clone` zero-copies **tables** verbatim (freezing whatever schema/data
+production currently has), and only rebuilds **views** fresh. So if you
+change an upstream model's output type (e.g. `stg__skytrax_reviews.review_id`
+from an int to a hash), any *unmodified* downstream table
+(`int_reviews_cleaned`, `fct_review`, ...) still gets cloned from production
+as-is — silently reintroducing the old, incompatible type in staging.
+
+This is why the selector uses `state:modified+`/`state:new+` (trailing `+`):
+it pulls unmodified downstream dependents into the same build, and
+`--full-refresh` forces them to actually rebuild from current code rather
+than merge into a stale clone.
+
+That covers staging. **Production still needs a manual one-time
+full-refresh** whenever a change like this ships, because `deploy_main.yml`
+never full-refreshes (it would defeat the point of incremental builds) and
+because an incremental model's contract check only validates SQL types, not
+whether they're compatible with the type already sitting in the live table
+— so the type mismatch only surfaces as a DML failure (`Numeric value ...
+is not recognized`) once dbt tries to merge new data into the old column:
+
+```bash
+cd dbt
+source cred_prod.txt     # or however you export SNOWFLAKE_* for PROD_DBT
+dbt run --select fct_review --target prod --full-refresh --profiles-dir ./
+```
+
+Verify with `describe table SKYTRAX_REVIEWS_DB.MARTS.FCT_REVIEW;` before
+re-running/re-triggering the deploy — a stale local checkout will silently
+full-refresh using the *old* model code and look like it worked without
+actually fixing anything.
