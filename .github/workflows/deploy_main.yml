@@ -7,6 +7,14 @@ name: Deploy Main
 #   2. Schedule -- every Monday at midnight UTC. Refreshes production data
 #      weekly even if no code changed.
 #   3. workflow_dispatch -- manual trigger button in the GitHub Actions UI.
+#
+# The build section below has TWO paths:
+#   - Scheduled runs: source freshness check + snapshot + FULL dbt build.
+#     No state selector -- a state:modified+ selection would be empty when no
+#     code changed, making the weekly refresh a no-op.
+#   - Push/dispatch runs: incremental deploy (state:modified+ against the
+#     production manifest from S3), falling back to a full build when no
+#     prior manifest exists (first deploy).
 # =============================================================================
 on:
   push:
@@ -82,13 +90,16 @@ jobs:
           dbt debug --profiles-dir ./ --target prod
 
       # -----------------------------------------------------------------------
-      # Download production state (if exists)
+      # Download production state (push/dispatch only)
       # -----------------------------------------------------------------------
       # Try to download the PREVIOUS production manifest from S3.
       # If it exists, we can do an incremental deploy (only changed models).
       # If not (first ever deploy), we do a full build.
+      # Scheduled runs skip this -- they always do a full refresh, so the
+      # state manifest is never consulted.
       - name: Download production manifest from S3
         id: prod_state
+        if: github.event_name != 'schedule'
         working-directory: ./dbt
         run: |
           mkdir -p prod_state
@@ -101,7 +112,41 @@ jobs:
           fi
 
       # -----------------------------------------------------------------------
-      # Run models
+      # Run models -- PATH 1: scheduled weekly refresh
+      # -----------------------------------------------------------------------
+      # No code changed on a cron run, so state:modified+ would select nothing.
+      # Instead: check source freshness, snapshot the source for SCD history,
+      # then rebuild + test EVERYTHING (no state selector).
+
+      # Freshness is advisory (continue-on-error): a stale source should not
+      # block the refresh, but the failed step stays visible in the run.
+      - name: Check source freshness (scheduled)
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt source freshness --profiles-dir ./ --target prod
+
+      # Capture SCD2 history of the raw source before rebuilding the marts.
+      - name: Run dbt snapshot (scheduled)
+        if: github.event_name == 'schedule'
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt snapshot --profiles-dir ./ --target prod
+
+      # Full build -- every model + test, so the weekly run actually refreshes
+      # incremental models and catches upstream data drift.
+      - name: Run dbt build (scheduled full refresh)
+        if: github.event_name == 'schedule'
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt build --profiles-dir ./ --target prod
+
+      # -----------------------------------------------------------------------
+      # Run models -- PATH 2: push/dispatch incremental deploy
       # -----------------------------------------------------------------------
 
       # Incremental deploy (production slim CI):
@@ -111,7 +156,7 @@ jobs:
       #   --favor-state    = if a model exists in both current run and state,
       #                      prefer the state version for upstream references
       - name: Run dbt build (incremental with defer)
-        if: steps.prod_state.outputs.has_state == 'true'
+        if: github.event_name != 'schedule' && steps.prod_state.outputs.has_state == 'true'
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
@@ -126,7 +171,7 @@ jobs:
       # Full build fallback -- if there's no prior manifest (first deploy),
       # just build and test everything.
       - name: Run dbt build (full -- no prior state)
-        if: steps.prod_state.outputs.has_state == 'false'
+        if: github.event_name != 'schedule' && steps.prod_state.outputs.has_state == 'false'
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
