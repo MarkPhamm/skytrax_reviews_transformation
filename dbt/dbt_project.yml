@@ -47,6 +47,11 @@ models:
       +enabled: true
       +tags: ['marts']
 
+  # Elementary observability models (artifacts, test results, anomaly scores).
+  # Package registers on-run-start / on-run-end hooks. See docs/observability.md.
+  elementary:
+    +schema: elementary
+
 seeds:
   skytrax_transformation:
     review:

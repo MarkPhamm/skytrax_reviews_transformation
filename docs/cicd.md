@@ -314,3 +314,8 @@ GitHub Actions assumes it via OIDC.
 | `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront distribution for docs | `E3LT0BDSMSIG7H` |
 | `EMAIL_USERNAME` | Gmail for notifications | — |
 | `EMAIL_PASSWORD` | Gmail app password | — |
+
+## Elementary observability
+
+See `docs/observability.md`. After `dbt run -s elementary`, publish `edr report` beside dbt docs when ready.
+

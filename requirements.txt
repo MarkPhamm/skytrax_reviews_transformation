@@ -1,3 +1,4 @@
 dbt-snowflake==1.9.2
 dbt-core
 sqlfluff==3.4.0
+elementary-data==0.19.4
