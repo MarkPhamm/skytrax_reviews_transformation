@@ -22,7 +22,10 @@ profile_config = ProfileConfig(
             "database": "SKYTRAX_REVIEWS_DB",
             "schema": "SOURCE",
             "warehouse": "SKYTRAX_COMPUTE_MEDIUM",
-            "role": "SKYTRAX_TRANSFORMER"
+            "role": "SKYTRAX_TRANSFORMER",
+            # Tag every Airflow-issued query so warehouse usage is attributable
+            # in QUERY_HISTORY (vs github_action_deploy / github_action_ci / local_dev)
+            "query_tag": "airflow_cosmos"
         }
     )
 )
