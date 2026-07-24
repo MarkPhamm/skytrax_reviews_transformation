@@ -132,12 +132,17 @@ jobs:
 
           # Compare current manifest against old manifest (base_state/).
           # state:modified = SQL or config changed, state:new = brand new model.
+          # Trailing + pulls in downstream dependents too: a changed model's
+          # unmodified descendants (e.g. int_reviews_cleaned) still need to be
+          # rebuilt fresh in staging, since dbt clone only zero-copies tables --
+          # a stale one otherwise freezes production's old column types/data
+          # in place of what the changed upstream model now produces.
           # --output name gives us model names like "stg_airline_reviews".
           dbt ls \
             --profiles-dir ./ \
             --state base_state \
             --resource-type model \
-            --select "state:modified" "state:new" \
+            --select "state:modified+" "state:new+" \
             --output name \
             --target staging \
             --quiet \
