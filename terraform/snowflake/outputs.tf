@@ -7,7 +7,7 @@
 
 output "database_name" {
   description = "Name of the Snowflake database"
-  value       = snowflake_database.skytrax.name
+  value       = var.database_name
 }
 
 output "warehouse_names" {

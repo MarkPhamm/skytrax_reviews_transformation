@@ -22,9 +22,11 @@ Key design points:
   (`--vars '{incremental_lookback_days: N}'`, default 3). Backfill with
   `dbt run -s fct_review --full-refresh`.
 - **Contract** — `fct_review` has an enforced dbt contract (column names + types).
-- **Governance** — `dim_customer.customer_name`/`nationality` are tagged PII via
-  post-hook; the tag's Snowflake masking policy (Terraform-managed in the
-  extract-load repo) masks values for roles without `PII_READER`.
+- **Governance** — `dim_customer.customer_name`/`nationality` get the
+  `PII_HASH_MASK` masking policy attached via post-hook
+  (`terraform/snowflake/masking_policies.tf`). `SKYTRAX_ADMIN`/
+  `SKYTRAX_TRANSFORMER` see real values; every other role (e.g.
+  `SKYTRAX_ANALYST`) sees a SHA-256 hash.
 - **Snapshot** — `snap_skytrax_reviews` keeps SCD2 history of review changes.
 - **Exposure** — the Mode dashboard is declared in `models/marts/exposures.yml`
   and shows up in dbt docs lineage.

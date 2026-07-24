@@ -45,7 +45,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_db" {
   privileges        = ["USAGE", "CREATE SCHEMA"]
   on_account_object {
     object_type = "DATABASE"
-    object_name = snowflake_database.skytrax.name
+    object_name = var.database_name
   }
 }
 
@@ -55,7 +55,7 @@ resource "snowflake_grant_privileges_to_account_role" "analyst_db" {
   privileges        = ["USAGE"]
   on_account_object {
     object_type = "DATABASE"
-    object_name = snowflake_database.skytrax.name
+    object_name = var.database_name
   }
 }
 
@@ -65,7 +65,24 @@ resource "snowflake_grant_privileges_to_account_role" "admin_db" {
   all_privileges    = true
   on_account_object {
     object_type = "DATABASE"
-    object_name = snowflake_database.skytrax.name
+    object_name = var.database_name
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Grants -- Tags
+# -----------------------------------------------------------------------------
+# The PII tag on SKYTRAX_REVIEWS_DB.RAW is created/applied outside Terraform.
+# Materializing a model whose columns carry that tag (e.g. dim_customer) requires
+# APPLY on the tag itself, or dbt run fails with "Insufficient privileges to
+# operate on tag 'PII'". Covers both CI (DBT_CICD) and prod (PROD_DBT), since
+# both use the transformer role.
+resource "snowflake_grant_privileges_to_account_role" "transformer_pii_tag_apply" {
+  account_role_name = snowflake_account_role.transformer.name
+  privileges        = ["APPLY"]
+  on_schema_object {
+    object_type = "TAG"
+    object_name = "\"${var.database_name}\".\"RAW\".\"PII\""
   }
 }
 
@@ -78,7 +95,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_schema_usage"
   account_role_name = snowflake_account_role.transformer.name
   privileges        = ["USAGE", "CREATE TABLE", "CREATE VIEW"]
   on_schema {
-    schema_name = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+    schema_name = "\"${var.database_name}\".\"${each.value}\""
   }
 }
 
@@ -90,7 +107,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_future_tables
   on_schema_object {
     future {
       object_type_plural = "TABLES"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+      in_schema          = "\"${var.database_name}\".\"${each.value}\""
     }
   }
 }
@@ -102,7 +119,7 @@ resource "snowflake_grant_privileges_to_account_role" "transformer_future_views"
   on_schema_object {
     future {
       object_type_plural = "VIEWS"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+      in_schema          = "\"${var.database_name}\".\"${each.value}\""
     }
   }
 }
@@ -120,7 +137,7 @@ resource "snowflake_grant_ownership" "transformer_tables" {
   on {
     all {
       object_type_plural = "TABLES"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+      in_schema          = "\"${var.database_name}\".\"${each.value}\""
     }
   }
   outbound_privileges = "COPY"
@@ -132,7 +149,7 @@ resource "snowflake_grant_ownership" "transformer_views" {
   on {
     all {
       object_type_plural = "VIEWS"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+      in_schema          = "\"${var.database_name}\".\"${each.value}\""
     }
   }
   outbound_privileges = "COPY"
@@ -144,7 +161,7 @@ resource "snowflake_grant_ownership" "transformer_future_tables" {
   on {
     future {
       object_type_plural = "TABLES"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+      in_schema          = "\"${var.database_name}\".\"${each.value}\""
     }
   }
   outbound_privileges = "COPY"
@@ -156,7 +173,7 @@ resource "snowflake_grant_ownership" "transformer_future_views" {
   on {
     future {
       object_type_plural = "VIEWS"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+      in_schema          = "\"${var.database_name}\".\"${each.value}\""
     }
   }
   outbound_privileges = "COPY"
@@ -170,7 +187,7 @@ resource "snowflake_grant_privileges_to_account_role" "analyst_marts_usage" {
   account_role_name = snowflake_account_role.analyst.name
   privileges        = ["USAGE"]
   on_schema {
-    schema_name = "\"${snowflake_database.skytrax.name}\".\"${snowflake_schema.marts.name}\""
+    schema_name = "\"${var.database_name}\".\"${snowflake_schema.marts.name}\""
   }
 }
 
@@ -180,7 +197,7 @@ resource "snowflake_grant_privileges_to_account_role" "analyst_marts_future_tabl
   on_schema_object {
     future {
       object_type_plural = "TABLES"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${snowflake_schema.marts.name}\""
+      in_schema          = "\"${var.database_name}\".\"${snowflake_schema.marts.name}\""
     }
   }
 }
@@ -191,7 +208,7 @@ resource "snowflake_grant_privileges_to_account_role" "analyst_marts_future_view
   on_schema_object {
     future {
       object_type_plural = "VIEWS"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${snowflake_schema.marts.name}\""
+      in_schema          = "\"${var.database_name}\".\"${snowflake_schema.marts.name}\""
     }
   }
 }
@@ -207,7 +224,7 @@ resource "snowflake_grant_privileges_to_account_role" "analyst_dev_schema_usage"
   account_role_name = snowflake_account_role.analyst.name
   privileges        = ["USAGE", "CREATE TABLE", "CREATE VIEW"]
   on_schema {
-    schema_name = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+    schema_name = "\"${var.database_name}\".\"${each.value}\""
   }
 }
 
@@ -218,7 +235,7 @@ resource "snowflake_grant_privileges_to_account_role" "analyst_dev_future_tables
   on_schema_object {
     future {
       object_type_plural = "TABLES"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+      in_schema          = "\"${var.database_name}\".\"${each.value}\""
     }
   }
 }
@@ -230,7 +247,7 @@ resource "snowflake_grant_privileges_to_account_role" "analyst_dev_future_views"
   on_schema_object {
     future {
       object_type_plural = "VIEWS"
-      in_schema          = "\"${snowflake_database.skytrax.name}\".\"${each.value}\""
+      in_schema          = "\"${var.database_name}\".\"${each.value}\""
     }
   }
 }

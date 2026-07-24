@@ -1,15 +1,15 @@
 {{ config(
     materialized='table',
-    post_hook="{{ apply_pii_tag(['customer_name', 'nationality']) }}",
+    post_hook="{{ apply_pii_mask(['customer_name', 'nationality']) }}",
 ) }}
 
 -- dim_customer.sql
 -- Customer dimension table
 -- Grain: one row per unique (customer_name, nationality) combination
 -- Surrogate key: generated using dbt_utils for deterministic, idempotent key generation
--- Governance: customer_name/nationality are tagged as PII post-run; the tag's
--- masking policy hides values from roles without PII_READER (see extract-load
--- repo, terraform/snowflake/masking.tf)
+-- Governance: customer_name/nationality are masked post-run via PII_HASH_MASK
+-- (terraform/snowflake/masking_policies.tf) -- SKYTRAX_ADMIN/SKYTRAX_TRANSFORMER
+-- see real values, every other role (e.g. SKYTRAX_ANALYST) sees a SHA-256 hash.
 
 with reviews as (
 
