@@ -53,5 +53,14 @@ seeds:
       +enabled: true
       +tags: ['seeds']
       +schema: RAW
+
+# Persist the failing rows of every data test so failures can be inspected
+# with SQL instead of re-running the test. With our generate_schema_name
+# macro the audit tables land in DBT_TEST__AUDIT on prod (custom schema
+# names pass through verbatim) and in the working schema on dev/CI targets.
+data_tests:
+  skytrax_transformation:
+    +store_failures: true
+
 flags:
   require_generic_test_arguments_property: true
