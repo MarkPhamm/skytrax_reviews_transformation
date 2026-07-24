@@ -170,12 +170,13 @@ Falls back to a full build if no prior manifest exists (first run).
 Uses **merge-base state comparison** — only changed models are linted, compiled, run, and tested:
 
 ```text
-1. Build merge-base manifest (state baseline from main)
-2. Detect changed models (state:modified + state:new)
-3. Lint changed SQL files with SQLFluff
+1. Build merge-base manifests (staging state baseline + prod manifest)
+2. Detect changed models (state:modified+ and state:new+)
+3. Lint changed SQL files with SQLFluff (blocking)
 4. Compile changed models
-5. Run changed models with --defer to base state
-6. Test changed models with --defer to base state
+5. Clone production tables into STAGING (zero-copy), then run changed
+   models there with --full-refresh
+6. Test changed models, then run + test their downstream dependents
 ```
 
 ## Getting Started
