@@ -189,15 +189,18 @@ jobs:
           source ../dbt_venv/bin/activate
           dbt docs generate --profiles-dir ./ --target prod
 
-      # Sync the generated docs to S3 (the bucket behind the CloudFront distribution
-      # from terraform/aws/). --delete removes old files no longer in target/.
+      # Upload ONLY the three files the dbt docs site needs. target/ also holds
+      # compiled SQL, run artifacts, and logs -- none of that belongs on the
+      # docs prefix. (--exclude '*' first, then include the allowlist.)
       - name: Upload dbt docs to S3
         working-directory: ./dbt
         run: |
           aws s3 sync target/ s3://$S3_ARTIFACTS_BUCKET/docs/ \
             --delete \
-            --include "*.html" \
-            --include "*.json"
+            --exclude "*" \
+            --include "index.html" \
+            --include "manifest.json" \
+            --include "catalog.json"
 
       # Invalidate CloudFront cache so users see the latest docs immediately
       # instead of the cached version.
