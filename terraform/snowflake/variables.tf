@@ -59,6 +59,24 @@ variable "cicd_user_password" {
   sensitive   = true
 }
 
+# --- Service Account Key-Pair Auth (optional, additive) ---
+# When set, the RSA public key is attached to the service user so it can also
+# authenticate with a private key. Password auth keeps working until the
+# password is removed in a separate, deliberate step.
+# See docs/keypair-auth.md for the full rollout procedure.
+
+variable "prod_dbt_rsa_public_key" {
+  description = "RSA public key for PROD_DBT key-pair auth (PEM body without header/footer). Null = password auth only."
+  type        = string
+  default     = null
+}
+
+variable "cicd_rsa_public_key" {
+  description = "RSA public key for DBT_CICD key-pair auth (PEM body without header/footer). Null = password auth only."
+  type        = string
+  default     = null
+}
+
 variable "gina_analyst_password" {
   description = "Password for GINA_ANALYST user"
   type        = string
