@@ -305,7 +305,7 @@ GitHub Actions assumes it via OIDC.
 
 | Secret | Description | Example |
 | ------ | ----------- | ------- |
-| `SNOWFLAKE_ACCOUNT` | Snowflake account identifier | `nvnjoib-on80344` |
+| `SNOWFLAKE_ACCOUNT` | Snowflake account identifier | `<your-account-locator>` |
 | `SNOWFLAKE_USER` | CI/CD service account | `DBT_CICD` |
 | `SNOWFLAKE_PASSWORD` | Password for DBT_CICD | — |
 | `SNOWFLAKE_ROLE` | Role for CI/CD | `SKYTRAX_TRANSFORMER` |

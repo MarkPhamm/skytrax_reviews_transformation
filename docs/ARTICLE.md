@@ -230,7 +230,7 @@ Now the Snowflake infrastructure is ready. Let's connect dbt to it and run our m
 Set these based on your Snowflake user. Each developer gets their own dev schema:
 
 ```bash
-export SNOWFLAKE_ACCOUNT=nvnjoib-on80344
+export SNOWFLAKE_ACCOUNT=<your-account-locator>
 export SNOWFLAKE_USER=your_user
 export SNOWFLAKE_PASSWORD=your_password
 export SNOWFLAKE_ROLE=SKYTRAX_ANALYST
@@ -441,7 +441,7 @@ Go to your GitHub repo → Settings → Secrets and variables → Actions. Add t
 
 | Secret | Value | Where to get it |
 | ------ | ----- | --------------- |
-| `SNOWFLAKE_ACCOUNT` | `nvnjoib-on80344` | Your Snowflake account identifier |
+| `SNOWFLAKE_ACCOUNT` | `<your-account-locator>` | Your Snowflake account identifier |
 | `SNOWFLAKE_USER` | `DBT_CICD` | The CI/CD service account from Step 2 |
 | `SNOWFLAKE_PASSWORD` | (password you set) | From `terraform.tfvars` |
 | `SNOWFLAKE_ROLE` | `SKYTRAX_TRANSFORMER` | The role with prod schema access |
