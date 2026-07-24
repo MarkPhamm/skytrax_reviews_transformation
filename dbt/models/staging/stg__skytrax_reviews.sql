@@ -39,5 +39,5 @@ select
         'date_submitted',
         'review',
     ]) }} as review_id,
-    * exclude (review_id),
+    *,
 from deduped
