@@ -95,7 +95,7 @@ aws cloudfront create-invalidation \
 ```
 
 Busts the CloudFront cache so the latest docs are live immediately at
-<https://d38l3fc9bckvbz.cloudfront.net>.
+<https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1>.
 
 #### Step 6: Upload Artifacts for Next Deploy
 
