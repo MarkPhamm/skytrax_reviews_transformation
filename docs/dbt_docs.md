@@ -2,7 +2,7 @@
 
 ## Live URL
 
-**<https://d38l3fc9bckvbz.cloudfront.net>**
+**<https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1>**
 
 Docs are automatically updated on every merge to `main` — the CD pipeline runs `dbt docs generate`, uploads to S3, and invalidates the CloudFront cache.
 

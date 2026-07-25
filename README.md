@@ -14,7 +14,7 @@ This project is my attempt to build all of that from scratch. I spent a full day
 - **Keyless auth** — GitHub Actions authenticates to AWS via OIDC, no static credentials
 - **Full IaC** — Snowflake users, roles, grants, schemas, warehouses + AWS S3, CloudFront, OIDC — all managed by Terraform
 - **Per-user dev schemas** — each developer gets their own isolated schema for local dbt development
-- **dbt Docs** — auto-generated and hosted on CloudFront, updated on every deploy: [Live Docs](https://d38l3fc9bckvbz.cloudfront.net)
+- **dbt Docs** — auto-generated and hosted on CloudFront, updated on every deploy: [Live Docs](https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1)
 
 ## Architecture
 
@@ -87,9 +87,9 @@ Follows **Kimball star schema** methodology with deterministic surrogate keys (`
 
 ### dbt Docs & Lineage Graph
 
-Full documentation is auto-generated and hosted on CloudFront: **[Live dbt Docs](https://d38l3fc9bckvbz.cloudfront.net)**
+Full documentation is auto-generated and hosted on CloudFront: **[Live dbt Docs](https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1)**
 
-![dbt docs lineage](assets/dbt/dbt_docs_lineage.png)
+[![dbt docs lineage](assets/dbt/dbt_docs_lineage.png)](https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1)
 
 ### Schema Diagram
 
