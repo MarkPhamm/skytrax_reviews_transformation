@@ -7,9 +7,9 @@ version: 2
 semantic_models:
   - name: fct_review
     description: |
-      Review fact semantic model for MetricFlow metrics.
-      Uses fct_review_enriched so airline is available without a dim join.
-    model: ref('fct_review_enriched')
+      Review fact semantic model for MetricFlow metrics on fct_review.
+      Airline name is not denormalized here — group by airline via dim_airline joins in BI.
+    model: ref('fct_review')
     defaults:
       agg_time_dimension: submitted_date
     entities:
@@ -23,9 +23,6 @@ semantic_models:
       - name: rating_band
         type: categorical
         description: bad / medium / good / unknown from average_rating.
-      - name: airline
-        type: categorical
-        description: Denormalized airline name from dim_airline.
       - name: seat_type
         type: categorical
       - name: type_of_traveller
