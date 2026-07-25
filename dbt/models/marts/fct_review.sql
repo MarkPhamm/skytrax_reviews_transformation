@@ -2,7 +2,7 @@
     materialized='incremental',
     unique_key='review_key',
     incremental_strategy='merge',
-    on_schema_change='append_new_columns',
+    on_schema_change='fail',
 ) }}
 
 -- fct_review.sql
@@ -18,13 +18,13 @@
 with base as (
 
     select
-        *,
-    from {{ ref('int_reviews_cleaned') }}
+        src.*,
+    from {{ ref('int_reviews_cleaned') }} as src
     {% if is_incremental() %}
-        where updated_at > (
-            select dateadd('day', -{{ var('incremental_lookback_days', 3) }}, max(source_updated_at))
-            from {{ this }}
-        )
+        where src.updated_at > (
+                select dateadd('day', -{{ var('incremental_lookback_days', 3) }}, max(prev.source_updated_at))
+                from {{ this }} as prev
+            )
     {% endif %}
 
 ),
@@ -103,23 +103,23 @@ with_ratings as (
         wa.*,
         round(
             (
-                coalesce(seat_comfort, 0) +
-                coalesce(cabin_staff_service, 0) +
-                coalesce(food_and_beverages, 0) +
-                coalesce(inflight_entertainment, 0) +
-                coalesce(ground_service, 0) +
-                coalesce(wifi_and_connectivity, 0) +
-                coalesce(value_for_money, 0)
+                coalesce(wa.seat_comfort, 0)
+                + coalesce(wa.cabin_staff_service, 0)
+                + coalesce(wa.food_and_beverages, 0)
+                + coalesce(wa.inflight_entertainment, 0)
+                + coalesce(wa.ground_service, 0)
+                + coalesce(wa.wifi_and_connectivity, 0)
+                + coalesce(wa.value_for_money, 0)
             )
             /
             nullif(
-                (seat_comfort is not null)::int +
-                (cabin_staff_service is not null)::int +
-                (food_and_beverages is not null)::int +
-                (inflight_entertainment is not null)::int +
-                (ground_service is not null)::int +
-                (wifi_and_connectivity is not null)::int +
-                (value_for_money is not null)::int,
+                (wa.seat_comfort is not null)::int
+                + (wa.cabin_staff_service is not null)::int
+                + (wa.food_and_beverages is not null)::int
+                + (wa.inflight_entertainment is not null)::int
+                + (wa.ground_service is not null)::int
+                + (wa.wifi_and_connectivity is not null)::int
+                + (wa.value_for_money is not null)::int,
                 0
             ),
             2

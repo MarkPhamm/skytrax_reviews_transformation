@@ -22,14 +22,14 @@ all_locations as (
         origin_airport as airport,
     from reviews
 
-    union
+    union all
 
     select
         destination_city as city,
         destination_airport as airport,
     from reviews
 
-    union
+    union all
 
     select
         transit_city as city,
@@ -38,10 +38,10 @@ all_locations as (
 
 ),
 
+-- union all above is safe: this select distinct dedupes the combined set
 distinct_locations as (
 
-    select
-        distinct
+    select distinct
         city,
         airport,
     from all_locations

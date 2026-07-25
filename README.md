@@ -14,7 +14,7 @@ This project is my attempt to build all of that from scratch. I spent a full day
 - **Keyless auth** — GitHub Actions authenticates to AWS via OIDC, no static credentials
 - **Full IaC** — Snowflake users, roles, grants, schemas, warehouses + AWS S3, CloudFront, OIDC — all managed by Terraform
 - **Per-user dev schemas** — each developer gets their own isolated schema for local dbt development
-- **dbt Docs** — auto-generated and hosted on CloudFront, updated on every deploy: [Live Docs](https://d38l3fc9bckvbz.cloudfront.net)
+- **dbt Docs** — auto-generated and hosted on CloudFront, updated on every deploy: [Live Docs](https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1)
 
 ## Architecture
 
@@ -87,9 +87,9 @@ Follows **Kimball star schema** methodology with deterministic surrogate keys (`
 
 ### dbt Docs & Lineage Graph
 
-Full documentation is auto-generated and hosted on CloudFront: **[Live dbt Docs](https://d38l3fc9bckvbz.cloudfront.net)**
+Full documentation is auto-generated and hosted on CloudFront: **[Live dbt Docs](https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1)**
 
-![dbt docs lineage](assets/dbt/dbt_docs_lineage.png)
+[![dbt docs lineage](assets/dbt/dbt_docs_lineage.png)](https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1)
 
 ### Schema Diagram
 
@@ -170,12 +170,13 @@ Falls back to a full build if no prior manifest exists (first run).
 Uses **merge-base state comparison** — only changed models are linted, compiled, run, and tested:
 
 ```text
-1. Build merge-base manifest (state baseline from main)
-2. Detect changed models (state:modified + state:new)
-3. Lint changed SQL files with SQLFluff
+1. Build merge-base manifests (staging state baseline + prod manifest)
+2. Detect changed models (state:modified+ and state:new+)
+3. Lint changed SQL files with SQLFluff (blocking)
 4. Compile changed models
-5. Run changed models with --defer to base state
-6. Test changed models with --defer to base state
+5. Clone production tables into STAGING (zero-copy), then run changed
+   models there with --full-refresh
+6. Test changed models, then run + test their downstream dependents
 ```
 
 ## Getting Started
@@ -205,7 +206,7 @@ How we host dbt docs with CloudFront + S3 (and why we switched from EC2).
 pip install -r requirements-dev.txt
 
 # Set Snowflake env vars
-export SNOWFLAKE_ACCOUNT=nvnjoib-on80344
+export SNOWFLAKE_ACCOUNT=<your-account-locator>
 export SNOWFLAKE_USER=your_user
 export SNOWFLAKE_PASSWORD=your_password
 export SNOWFLAKE_ROLE=SKYTRAX_ANALYST
@@ -259,7 +260,7 @@ setup.cfg                   SQLFluff config
 
 | Secret | Description |
 | -------- | ------------- |
-| `SNOWFLAKE_ACCOUNT` | `nvnjoib-on80344` |
+| `SNOWFLAKE_ACCOUNT` | `<your-account-locator>` |
 | `SNOWFLAKE_USER` | `DBT_CICD` |
 | `SNOWFLAKE_PASSWORD` | Password for DBT_CICD user |
 | `SNOWFLAKE_ROLE` | `SKYTRAX_TRANSFORMER` |

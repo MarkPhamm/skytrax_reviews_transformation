@@ -230,7 +230,7 @@ Now the Snowflake infrastructure is ready. Let's connect dbt to it and run our m
 Set these based on your Snowflake user. Each developer gets their own dev schema:
 
 ```bash
-export SNOWFLAKE_ACCOUNT=nvnjoib-on80344
+export SNOWFLAKE_ACCOUNT=<your-account-locator>
 export SNOWFLAKE_USER=your_user
 export SNOWFLAKE_PASSWORD=your_password
 export SNOWFLAKE_ROLE=SKYTRAX_ANALYST
@@ -272,7 +272,7 @@ The transformation follows a classic **staging → intermediate → marts** patt
 
 All dimensions use `dbt_utils.generate_surrogate_key` for deterministic surrogate keys. The fact table joins to all 5 dimensions — with **role-playing dimensions** for dates (submitted vs. flown) and locations (origin, destination, transit). It also calculates `average_rating` across all non-null rating columns and a `rating_band` (bad/medium/good).
 
-![dbt docs lineage](../assets/dbt/dbt_docs_lineage.png)
+[![dbt docs lineage](../assets/dbt/dbt_docs_lineage.png)](https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1)
 
 ## 3.4 Local defer builds (against production)
 
@@ -441,7 +441,7 @@ Go to your GitHub repo → Settings → Secrets and variables → Actions. Add t
 
 | Secret | Value | Where to get it |
 | ------ | ----- | --------------- |
-| `SNOWFLAKE_ACCOUNT` | `nvnjoib-on80344` | Your Snowflake account identifier |
+| `SNOWFLAKE_ACCOUNT` | `<your-account-locator>` | Your Snowflake account identifier |
 | `SNOWFLAKE_USER` | `DBT_CICD` | The CI/CD service account from Step 2 |
 | `SNOWFLAKE_PASSWORD` | (password you set) | From `terraform.tfvars` |
 | `SNOWFLAKE_ROLE` | `SKYTRAX_TRANSFORMER` | The role with prod schema access |
@@ -527,7 +527,7 @@ dbt docs are auto-generated and hosted on CloudFront. Every merge to `main` trig
 2. `aws s3 sync` — uploads to `s3://bucket/docs/`
 3. `aws cloudfront create-invalidation` — busts the cache
 
-The live docs are at: **<https://d38l3fc9bckvbz.cloudfront.net>**
+The live docs are at: **<https://d38l3fc9bckvbz.cloudfront.net/#!/overview/ba_transformation?g_v=1>**
 
 ![cloudfront docs](../assets/aws/cloudfont_dbt_docs.png)
 

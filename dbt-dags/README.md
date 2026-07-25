@@ -40,7 +40,7 @@ You should also be able to access your Postgres Database at 'localhost:5432/post
 4. If the DAG is deactivated, run 
 
 ```bash
-airflow dags reserialize && airflow dags unpause dbt_transformation
+airflow dags reserialize && airflow dags unpause skytrax_dbt_transformation
 ```
 
 Deploy Your Project to Astronomer

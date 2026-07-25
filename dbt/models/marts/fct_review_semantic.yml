@@ -1,0 +1,63 @@
+# MetricFlow / dbt Semantic Layer (legacy standalone YAML — dbt-core 1.10).
+# Query with `mf query --metrics avg_rating --group-by rating_band` after
+# `dbt parse` (MetricFlow CLI) or via the dbt Semantic Layer.
+
+version: 2
+
+semantic_models:
+  - name: fct_review
+    description: |
+      Review fact semantic model for MetricFlow metrics on fct_review.
+      Airline name is not denormalized here — group by airline via dim_airline joins in BI.
+    model: ref('fct_review')
+    defaults:
+      agg_time_dimension: submitted_date
+    entities:
+      - name: review
+        type: primary
+        expr: review_key
+      - name: airline_entity
+        type: foreign
+        expr: airline_id
+    dimensions:
+      - name: rating_band
+        type: categorical
+        description: bad / medium / good / unknown from average_rating.
+      - name: seat_type
+        type: categorical
+      - name: type_of_traveller
+        type: categorical
+      - name: submitted_date
+        type: time
+        type_params:
+          time_granularity: day
+        expr: date_submitted_id
+    measures:
+      - name: average_rating
+        description: Mean of per-review average_rating.
+        agg: average
+        expr: average_rating
+      - name: recommended
+        description: Count of reviews that recommend the airline.
+        agg: sum
+        expr: "case when recommended then 1 else 0 end"
+      - name: review_count
+        description: Number of reviews.
+        agg: count
+        expr: review_id
+
+metrics:
+  - name: avg_rating
+    label: Average Rating
+    description: Average of calculated review average_rating across the grain.
+    type: simple
+    type_params:
+      measure: average_rating
+
+  - name: pct_recommended
+    label: Percent Recommended
+    description: Share of reviews that recommend the airline (recommended / review_count).
+    type: ratio
+    type_params:
+      numerator: recommended
+      denominator: review_count

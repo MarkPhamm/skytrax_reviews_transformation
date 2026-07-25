@@ -43,9 +43,25 @@ with reviews as (
 
 raw_aircraft as (
 
-    select
-        distinct aircraft_model,
+    select distinct aircraft_model,
     from reviews
+
+),
+
+mapped as (
+
+    select
+        *,
+    from (
+        values
+        {% for aircraft in aircraft_data %}
+            (
+                '{{ aircraft.model }}',
+                '{{ aircraft.manufacturer }}',
+                {{ aircraft.capacity if aircraft.capacity is not none else 'null' }}
+            ){{ "," if not loop.last }}
+        {% endfor %}
+    ) as t (model, manufacturer, capacity)
 
 ),
 
@@ -57,15 +73,7 @@ final as (
         mapped.manufacturer as aircraft_manufacturer,
         mapped.capacity as seat_capacity,
     from raw_aircraft
-    left join (
-        select
-            *,
-        from (values
-            {% for aircraft in aircraft_data -%}
-                ('{{ aircraft.model }}', '{{ aircraft.manufacturer }}', {{ aircraft.capacity if aircraft.capacity is not none else 'null' }}){% if not loop.last %},{% endif %}
-            {% endfor %}
-        ) as t(model, manufacturer, capacity)
-    ) as mapped
+    left join mapped
         on raw_aircraft.aircraft_model = mapped.model
 
 )

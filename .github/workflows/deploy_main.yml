@@ -7,6 +7,16 @@ name: Deploy Main
 #   2. Schedule -- every Monday at midnight UTC. Refreshes production data
 #      weekly even if no code changed.
 #   3. workflow_dispatch -- manual trigger button in the GitHub Actions UI.
+#
+# The build section below has TWO paths:
+#   - Scheduled runs: source freshness check + snapshot + FULL dbt build
+#     (--full-refresh). No state selector -- a state:modified+ selection
+#     would be empty when no code changed, making the weekly refresh a no-op.
+#   - Push/dispatch runs: slim deploy (state:modified+ against the production
+#     manifest from S3) with --full-refresh so incremental schema/type drifts
+#     are reconciled, falling back to a full --full-refresh build when no
+#     prior manifest exists OR its metadata.dbt_version != installed dbt-core
+#     (keeps S3 state aligned with the CI pin in requirements.txt).
 # =============================================================================
 on:
   push:
@@ -82,36 +92,93 @@ jobs:
           dbt debug --profiles-dir ./ --target prod
 
       # -----------------------------------------------------------------------
-      # Download production state (if exists)
+      # Download production state (push/dispatch only)
       # -----------------------------------------------------------------------
       # Try to download the PREVIOUS production manifest from S3.
-      # If it exists, we can do an incremental deploy (only changed models).
-      # If not (first ever deploy), we do a full build.
+      # If it exists AND was written by the same dbt-core version CI is running,
+      # we can do a slim deploy (state:modified+). Mismatched manifests fail
+      # deserialization (e.g. S3=1.12.0 vs CI=1.10.5 → WritableManifest macros
+      # error), so we discard them and full-refresh; the successful run then
+      # re-uploads a manifest written by this CI dbt version.
+      # Scheduled runs skip this -- they always do a full refresh, so the
+      # state manifest is never consulted.
       - name: Download production manifest from S3
         id: prod_state
+        if: github.event_name != 'schedule'
         working-directory: ./dbt
         run: |
+          source ../dbt_venv/bin/activate
           mkdir -p prod_state
-          if aws s3 cp s3://$S3_ARTIFACTS_BUCKET/manifests/manifest.json prod_state/manifest.json 2>/dev/null; then
-            echo "has_state=true" >> "$GITHUB_OUTPUT"
-            echo "Production manifest downloaded -- will use defer/favor-state"
-          else
+
+          if ! aws s3 cp s3://$S3_ARTIFACTS_BUCKET/manifests/manifest.json prod_state/manifest.json 2>/dev/null; then
             echo "has_state=false" >> "$GITHUB_OUTPUT"
             echo "No production manifest found -- will run full build"
+            exit 0
+          fi
+
+          CI_DBT_VERSION=$(python -c "from importlib.metadata import version; print(version('dbt-core'))")
+          STATE_DBT_VERSION=$(python -c "import json; print(json.load(open('prod_state/manifest.json'))['metadata']['dbt_version'])")
+
+          echo "CI dbt-core:    $CI_DBT_VERSION"
+          echo "S3 manifest:    $STATE_DBT_VERSION"
+
+          if [ "$STATE_DBT_VERSION" = "$CI_DBT_VERSION" ]; then
+            echo "has_state=true" >> "$GITHUB_OUTPUT"
+            echo "Manifest dbt version matches CI -- will use defer/favor-state"
+          else
+            rm -f prod_state/manifest.json
+            echo "has_state=false" >> "$GITHUB_OUTPUT"
+            echo "Manifest dbt version mismatch -- discarding state and full-refreshing so S3 is rewritten with $CI_DBT_VERSION"
           fi
 
       # -----------------------------------------------------------------------
-      # Run models
+      # Run models -- PATH 1: scheduled weekly refresh
+      # -----------------------------------------------------------------------
+      # No code changed on a cron run, so state:modified+ would select nothing.
+      # Instead: check source freshness, snapshot the source for SCD history,
+      # then rebuild + test EVERYTHING (no state selector).
+
+      # Freshness is advisory (continue-on-error): a stale source should not
+      # block the refresh, but the failed step stays visible in the run.
+      - name: Check source freshness (scheduled)
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt source freshness --profiles-dir ./ --target prod
+
+      # Capture SCD2 history of the raw source before rebuilding the marts.
+      - name: Run dbt snapshot (scheduled)
+        if: github.event_name == 'schedule'
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt snapshot --profiles-dir ./ --target prod
+
+      # Full rebuild -- every model + test with --full-refresh so incremental
+      # tables are recreated (avoids on_schema_change failures / stale types).
+      - name: Run dbt build (scheduled full refresh)
+        if: github.event_name == 'schedule'
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+          dbt build --profiles-dir ./ --target prod --full-refresh
+
+      # -----------------------------------------------------------------------
+      # Run models -- PATH 2: push/dispatch slim deploy (full-refresh selected)
       # -----------------------------------------------------------------------
 
-      # Incremental deploy (production slim CI):
+      # Slim deploy (production):
       #   state:modified+ = changed models + their downstream children
+      #   --full-refresh  = recreate selected incrementals so schema/type drift
+      #                      (e.g. AVERAGE_RATING precision) cannot fail the deploy
       #   --defer          = for any model NOT in the selection, reference the
       #                      production version instead of trying to build it
       #   --favor-state    = if a model exists in both current run and state,
       #                      prefer the state version for upstream references
-      - name: Run dbt build (incremental with defer)
-        if: steps.prod_state.outputs.has_state == 'true'
+      - name: Run dbt build (modified+ with full-refresh and defer)
+        if: github.event_name != 'schedule' && steps.prod_state.outputs.has_state == 'true'
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
@@ -119,19 +186,19 @@ jobs:
             --profiles-dir ./ \
             --target prod \
             --select state:modified+ \
+            --full-refresh \
             --defer \
             --favor-state \
             --state prod_state
 
       # Full build fallback -- if there's no prior manifest (first deploy),
-      # just build and test everything.
-      - name: Run dbt build (full -- no prior state)
-        if: steps.prod_state.outputs.has_state == 'false'
+      # rebuild and test everything from scratch.
+      - name: Run dbt build (full-refresh -- no prior state)
+        if: github.event_name != 'schedule' && steps.prod_state.outputs.has_state == 'false'
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
-          dbt run --profiles-dir ./ --target prod
-          dbt test --profiles-dir ./ --target prod
+          dbt build --profiles-dir ./ --target prod --full-refresh
 
       # -----------------------------------------------------------------------
       # Generate and upload docs
@@ -144,15 +211,18 @@ jobs:
           source ../dbt_venv/bin/activate
           dbt docs generate --profiles-dir ./ --target prod
 
-      # Sync the generated docs to S3 (the bucket behind the CloudFront distribution
-      # from terraform/aws/). --delete removes old files no longer in target/.
+      # Upload ONLY the three files the dbt docs site needs. target/ also holds
+      # compiled SQL, run artifacts, and logs -- none of that belongs on the
+      # docs prefix. (--exclude '*' first, then include the allowlist.)
       - name: Upload dbt docs to S3
         working-directory: ./dbt
         run: |
           aws s3 sync target/ s3://$S3_ARTIFACTS_BUCKET/docs/ \
             --delete \
-            --include "*.html" \
-            --include "*.json"
+            --exclude "*" \
+            --include "index.html" \
+            --include "manifest.json" \
+            --include "catalog.json"
 
       # Invalidate CloudFront cache so users see the latest docs immediately
       # instead of the cached version.
