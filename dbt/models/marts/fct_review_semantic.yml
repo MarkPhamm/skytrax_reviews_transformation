@@ -1,6 +1,8 @@
 # MetricFlow / dbt Semantic Layer (legacy standalone YAML — dbt-core 1.10).
 # Query with `mf query --metrics avg_rating --group-by rating_band` after
 # `dbt parse` (MetricFlow CLI) or via the dbt Semantic Layer.
+#
+# Ratio metrics must reference other *metrics*, not raw measures.
 
 version: 2
 
@@ -37,11 +39,11 @@ semantic_models:
         description: Mean of per-review average_rating.
         agg: average
         expr: average_rating
-      - name: recommended
+      - name: recommended_sum
         description: Count of reviews that recommend the airline.
         agg: sum
         expr: "case when recommended then 1 else 0 end"
-      - name: review_count
+      - name: reviews
         description: Number of reviews.
         agg: count
         expr: review_id
@@ -54,10 +56,24 @@ metrics:
     type_params:
       measure: average_rating
 
+  - name: recommended_count
+    label: Recommended Reviews
+    description: Count of reviews that recommend the airline.
+    type: simple
+    type_params:
+      measure: recommended_sum
+
+  - name: review_count
+    label: Review Count
+    description: Number of reviews.
+    type: simple
+    type_params:
+      measure: reviews
+
   - name: pct_recommended
     label: Percent Recommended
     description: Share of reviews that recommend the airline (recommended / review_count).
     type: ratio
     type_params:
-      numerator: recommended
+      numerator: recommended_count
       denominator: review_count
