@@ -126,8 +126,8 @@ CI minutes when pushing rapid commits.
 
 ### CI Step-by-Step Walkthrough
 
-The CI pipeline has **5 sequential jobs**. Each job sets up its own
-fresh Python venv (no caching). Jobs 3-5 only run if changes are detected.
+The CI pipeline has **7 jobs**. Each job sets up its own
+fresh Python venv (no caching). Jobs 3-7 only run if changes are detected.
 
 #### Job 1: Setup & Detect Changes
 
@@ -150,12 +150,12 @@ you were working.
 
 #### Job 2: Lint SQL
 
-**Goal:** Catch style/formatting issues early.
+**Goal:** Enforce SQL style -- lint violations fail the job.
 
 ```text
 1. Compute the same merge-base SHA
 2. git diff --name-only to find changed .sql files
-3. Run sqlfluff lint on only those files
+3. Run sqlfluff lint on only those files (non-zero exit blocks the PR)
 ```
 
 Uses the `setup.cfg` config at the project root (lowercased SQL,
@@ -181,17 +181,21 @@ dbt compile --select <changed_models> --target staging
 **Goal:** Actually execute the changed models against Snowflake.
 
 ```bash
+dbt clone --state prod_state --target staging
+
 dbt run \
   --select <changed_models> \
-  --defer \
-  --state base_state \
   --target staging \
+  --full-refresh \
   --fail-fast
 ```
 
-- Uses `--defer` so unchanged upstream models reference the base state
-  (from the merge-base manifest) instead of being rebuilt
+- `dbt clone` first zero-copies the production tables into `STAGING`,
+  so changed models can reference upstream parents that exist there
 - `--target staging` writes to the `STAGING` schema (CI scratch space)
+- `--full-refresh` rebuilds incremental models from scratch -- the clone
+  is recreated from prod every run, so merging into it would test against
+  whatever schema/data prod happens to have
 - `--fail-fast` stops on first failure to save time
 - Only runs if compilation succeeded (depends on Job 3)
 
@@ -202,14 +206,19 @@ dbt run \
 ```bash
 dbt test \
   --select <changed_models> \
-  --defer \
-  --state base_state \
   --target staging
 ```
 
-- Same defer logic — unchanged upstream models use the base state
-- Tests run in the `STAGING` schema
+- Tests run in the `STAGING` schema against the tables Job 4 built
 - Only runs if the run step succeeded (depends on Job 4)
+
+#### Jobs 6-7: Run + Test Downstream Models
+
+**Goal:** Rebuild and test everything downstream of the changed models.
+
+Selects each changed model with a trailing `+` (its children) and excludes
+the changed models themselves (already built in Job 4), then runs
+`dbt run --full-refresh` and `dbt test` on that selection in `STAGING`.
 
 ---
 

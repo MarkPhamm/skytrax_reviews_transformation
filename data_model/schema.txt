@@ -3,13 +3,13 @@ fct_review
 review_key PK string
 customer_id string FK >- dim_customer.customer_id
 airline_id string FK >- dim_airline.airline_id
-date_submitted_id int FK >- dim_date.date_id
-date_flown_id int FK >- dim_date.date_id
+date_submitted_id date FK >- dim_date.date_id
+date_flown_id date FK >- dim_date.date_id
 origin_location_id string FK >- dim_location.location_id
 destination_location_id string FK >- dim_location.location_id
 transit_location_id NULL string FK >- dim_location.location_id
 aircraft_id NULL string FK >- dim_aircraft.aircraft_id
-review_id int
+review_id string
 is_verified bool
 seat_type string
 type_of_traveller NULL string
@@ -54,7 +54,7 @@ seat_capacity int
 
 dim_date
 --------
-date_id PK int
+date_id PK date
 day_of_week int
 day_of_week_name string
 cal_week_start_date date
