@@ -11,9 +11,9 @@ exposures:
       average review rating, recommendation rate, rating bands, and breakdowns
       by service, seat type, traveller type, aircraft, airport, and year.
       Queries live in the spirit_airlines_dashboard repo (sql/) and run against
-      MARTS.FCT_REVIEW_ENRICHED.
+      MARTS.FCT_REVIEW (joined to conformed dims as needed).
     depends_on:
-      - ref('fct_review_enriched')
+      - ref('fct_review')
       - ref('dim_aircraft')
       - ref('dim_location')
     owner:
