@@ -15,7 +15,8 @@ name: Deploy Main
 #   - Push/dispatch runs: slim deploy (state:modified+ against the production
 #     manifest from S3) with --full-refresh so incremental schema/type drifts
 #     are reconciled, falling back to a full --full-refresh build when no
-#     prior manifest exists (first deploy).
+#     prior manifest exists OR its metadata.dbt_version != installed dbt-core
+#     (keeps S3 state aligned with the CI pin in requirements.txt).
 # =============================================================================
 on:
   push:
@@ -94,8 +95,11 @@ jobs:
       # Download production state (push/dispatch only)
       # -----------------------------------------------------------------------
       # Try to download the PREVIOUS production manifest from S3.
-      # If it exists, we can do an incremental deploy (only changed models).
-      # If not (first ever deploy), we do a full build.
+      # If it exists AND was written by the same dbt-core version CI is running,
+      # we can do a slim deploy (state:modified+). Mismatched manifests fail
+      # deserialization (e.g. S3=1.12.0 vs CI=1.10.5 → WritableManifest macros
+      # error), so we discard them and full-refresh; the successful run then
+      # re-uploads a manifest written by this CI dbt version.
       # Scheduled runs skip this -- they always do a full refresh, so the
       # state manifest is never consulted.
       - name: Download production manifest from S3
@@ -103,13 +107,28 @@ jobs:
         if: github.event_name != 'schedule'
         working-directory: ./dbt
         run: |
+          source ../dbt_venv/bin/activate
           mkdir -p prod_state
-          if aws s3 cp s3://$S3_ARTIFACTS_BUCKET/manifests/manifest.json prod_state/manifest.json 2>/dev/null; then
-            echo "has_state=true" >> "$GITHUB_OUTPUT"
-            echo "Production manifest downloaded -- will use defer/favor-state"
-          else
+
+          if ! aws s3 cp s3://$S3_ARTIFACTS_BUCKET/manifests/manifest.json prod_state/manifest.json 2>/dev/null; then
             echo "has_state=false" >> "$GITHUB_OUTPUT"
             echo "No production manifest found -- will run full build"
+            exit 0
+          fi
+
+          CI_DBT_VERSION=$(python -c "from importlib.metadata import version; print(version('dbt-core'))")
+          STATE_DBT_VERSION=$(python -c "import json; print(json.load(open('prod_state/manifest.json'))['metadata']['dbt_version'])")
+
+          echo "CI dbt-core:    $CI_DBT_VERSION"
+          echo "S3 manifest:    $STATE_DBT_VERSION"
+
+          if [ "$STATE_DBT_VERSION" = "$CI_DBT_VERSION" ]; then
+            echo "has_state=true" >> "$GITHUB_OUTPUT"
+            echo "Manifest dbt version matches CI -- will use defer/favor-state"
+          else
+            rm -f prod_state/manifest.json
+            echo "has_state=false" >> "$GITHUB_OUTPUT"
+            echo "Manifest dbt version mismatch -- discarding state and full-refreshing so S3 is rewritten with $CI_DBT_VERSION"
           fi
 
       # -----------------------------------------------------------------------
