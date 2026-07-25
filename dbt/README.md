@@ -13,7 +13,7 @@ Three layers (see `../data_model/schema.png` for the ERD):
 |---|---|---|---|
 | `staging` | SOURCE | view | 1:1 with source; dedup on the natural key; deterministic `review_id` hash |
 | `intermediate` | INTERMEDIATE | view | cleaning, null handling, renames |
-| `marts` | MARTS | table / incremental | star schema: `fct_review` + 5 conformed dims + `fct_review_enriched` BI view |
+| `marts` | MARTS | table / incremental | star schema: `fct_review` + 5 conformed dims |
 
 Key design points:
 

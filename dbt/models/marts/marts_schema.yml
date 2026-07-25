@@ -332,57 +332,33 @@ models:
 
 # ---
 
-  - name: fct_review_enriched
-    description: |
-      Thin presentation view over fct_review for BI consumption (Mode dashboards).
-      Adds the denormalized airline name; grain identical to fct_review.
-    columns:
-      - name: review_key
-        description: Surrogate key for the review fact (from fct_review).
-        tests:
-          - unique
-          - not_null
-      - name: airline
-        description: Denormalized airline name from dim_airline.
-        tests:
-          - not_null
-
-# ---
-
   - name: dim_location
     description: |
       Location dimension table combining origin, destination, and transit airports.
       Grain: one row per unique (city, airport) combination.
     columns:
       - name: location_id
+        data_type: varchar
         description: Surrogate key for location (deterministic, idempotent).
         tests:
           - unique
           - not_null
-        config:
-          meta:
-            datatypes: string
 
       - name: city
+        data_type: varchar
         description: City name (e.g., New York, London).
         tests:
           - not_null
-        config:
-          meta:
-            datatypes: string
 
       - name: airport
+        data_type: varchar
         description: Airport code (e.g., JFK, LHR).
         tests:
           - not_null
-        config:
-          meta:
-            datatypes: string
 
     config:
-      meta:
-        contracts:
-          enabled: true
+      contract:
+        enforced: true
 
 # ---
 
@@ -393,130 +369,91 @@ models:
       Grain: one row per calendar date.
     columns:
       - name: date_id
+        data_type: date
         description: Surrogate key representing each calendar date.
         tests:
           - unique
           - not_null
-        config:
-          meta:
-            datatypes: date
 
       - name: day_of_week
+        data_type: number
         description: Numeric day of the week (1=Monday).
-        config:
-          meta:
-            datatypes: integer
 
       - name: day_of_week_name
+        data_type: varchar
         description: Full name of the day of the week (Monday, Tuesday, etc.).
-        config:
-          meta:
-            datatypes: string
 
       - name: cal_week_start_date
+        data_type: date
         description: Start date of the calendar week (usually Monday).
-        config:
-          meta:
-            datatypes: date
 
       - name: day_of_month
+        data_type: number
         description: Day of the month (1-31).
-        config:
-          meta:
-            datatypes: integer
 
       - name: cal_month
+        data_type: number
         description: Calendar month as integer (1-12).
-        config:
-          meta:
-            datatypes: integer
 
       - name: cal_mon_name
+        data_type: varchar
         description: Full name of the calendar month (January, February, etc.).
-        config:
-          meta:
-            datatypes: string
 
       - name: cal_mon_name_short
+        data_type: varchar
         description: Abbreviated month name (Jan, Feb, etc.).
-        config:
-          meta:
-            datatypes: string
 
       - name: cal_quarter
+        data_type: number
         description: Calendar quarter number (1-4).
-        config:
-          meta:
-            datatypes: integer
 
       - name: cal_quarter_name
+        data_type: varchar
         description: Quarter name (Q1, Q2, Q3, Q4).
-        config:
-          meta:
-            datatypes: string
 
       - name: cal_year
+        data_type: number
         description: Calendar year (4-digit).
-        config:
-          meta:
-            datatypes: integer
 
       - name: is_weekend
+        data_type: boolean
         description: Boolean flag for weekend days (Saturday, Sunday).
         tests:
           - accepted_values:
               arguments:
                 values: [true, false]
-        config:
-          meta:
-            datatypes: boolean
 
       - name: fin_year
+        data_type: number
         description: Financial year (fiscal year starting July 1).
-        config:
-          meta:
-            datatypes: integer
 
       - name: fin_period
+        data_type: number
         description: Financial period number within fiscal year.
-        config:
-          meta:
-            datatypes: integer
 
       - name: fin_quarter
+        data_type: number
         description: Financial quarter number within fiscal year.
-        config:
-          meta:
-            datatypes: integer
 
       - name: fin_week
+        data_type: number
         description: Financial week number within fiscal year.
-        config:
-          meta:
-            datatypes: integer
 
       - name: fin_period_name
+        data_type: varchar
         description: Financial period name (e.g., p1, p2, ..., p12).
-        config:
-          meta:
-            datatypes: string
 
       - name: fin_quarter_name
+        data_type: varchar
         description: Financial quarter name (e.g., FQ1, FQ2, FQ3, FQ4).
-        config:
-          meta:
-            datatypes: string
 
       - name: fin_week_name
+        data_type: varchar
         description: Financial week name (e.g., wk1, wk2, ..., wk52).
-        config:
-          meta:
-            datatypes: string
 
     config:
-      meta:
-        contracts:
-          enabled: true
+      contract:
+        enforced: true
       tags:
         - one_time_run
 
@@ -528,38 +465,29 @@ models:
       Grain: one row per unique aircraft model.
     columns:
       - name: aircraft_id
+        data_type: varchar
         description: Surrogate key for aircraft (deterministic, idempotent).
         tests:
           - unique
           - not_null
-        config:
-          meta:
-            datatypes: string
 
       - name: aircraft_model
+        data_type: varchar
         description: Aircraft model name (e.g., Boeing 777, Airbus A380).
         tests:
           - not_null
-        config:
-          meta:
-            datatypes: string
 
       - name: aircraft_manufacturer
+        data_type: varchar
         description: Aircraft manufacturer (Airbus, Boeing, Embraer, Saab, Unknown).
-        config:
-          meta:
-            datatypes: string
 
       - name: seat_capacity
+        data_type: number
         description: Maximum seating capacity of the aircraft.
-        config:
-          meta:
-            datatypes: integer
 
     config:
-      meta:
-        contracts:
-          enabled: true
+      contract:
+        enforced: true
 
 # ---
 
@@ -570,40 +498,31 @@ models:
       Includes denormalized review count.
     columns:
       - name: customer_id
+        data_type: varchar
         description: Surrogate key for customer (deterministic, idempotent).
         tests:
           - unique
           - not_null
-        config:
-          meta:
-            datatypes: string
 
       - name: customer_name
+        data_type: varchar
         description: Name of the customer. 'Unknown' for missing values.
         tests:
           - not_null
-        config:
-          meta:
-            datatypes: string
 
       - name: nationality
+        data_type: varchar
         description: Nationality of the customer. 'Unknown' for missing values.
         tests:
           - not_null
-        config:
-          meta:
-            datatypes: string
 
       - name: number_of_flights
+        data_type: number
         description: Count of reviews (flights) associated with this customer.
-        config:
-          meta:
-            datatypes: integer
 
     config:
-      meta:
-        contracts:
-          enabled: true
+      contract:
+        enforced: true
 
 # ---
 
@@ -613,23 +532,24 @@ models:
       Grain: one row per unique airline.
     columns:
       - name: airline_id
+        data_type: varchar
         description: Surrogate key for airline (deterministic, idempotent).
         tests:
           - unique
           - not_null
-        config:
-          meta:
-            datatypes: string
 
       - name: airline_name
+        data_type: varchar
         description: Name of the airline.
         tests:
           - not_null
-        config:
-          meta:
-            datatypes: string
+
+      # The model emits this column; an enforced contract requires every
+      # output column to be declared here.
+      - name: airline_name_cleaned
+        data_type: varchar
+        description: Lowercased, trimmed airline name for joining/matching.
 
     config:
-      meta:
-        contracts:
-          enabled: true
+      contract:
+        enforced: true

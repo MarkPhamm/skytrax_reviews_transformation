@@ -21,7 +21,7 @@ pip install -r requirements-dev.txt  # includes dbt + dev tools (pandas, ipykern
 Set these based on your Snowflake user. Each developer has their own dev schema (`SNOWFLAKE_SCHEMA`).
 
 ```bash
-export SNOWFLAKE_ACCOUNT=nvnjoib-on80344
+export SNOWFLAKE_ACCOUNT=<your-account-locator>
 export SNOWFLAKE_USER=your_user            # your Snowflake username
 export SNOWFLAKE_PASSWORD=your_password
 export SNOWFLAKE_ROLE=SKYTRAX_ANALYST

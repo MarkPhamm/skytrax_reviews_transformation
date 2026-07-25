@@ -121,7 +121,7 @@ SELECT
     f.el_updated_at,
     f.t_updated_at
 
-FROM british_airways_db.marts.fct_review_enriched  AS f
+FROM british_airways_db.marts.fct_review  AS f
 
 /* ----- date dimensions ----- */
 LEFT JOIN british_airways_db.marts.dim_date     AS ds
