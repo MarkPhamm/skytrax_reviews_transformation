@@ -332,23 +332,6 @@ models:
 
 # ---
 
-  - name: fct_review_enriched
-    description: |
-      Thin presentation view over fct_review for BI consumption (Mode dashboards).
-      Adds the denormalized airline name; grain identical to fct_review.
-    columns:
-      - name: review_key
-        description: Surrogate key for the review fact (from fct_review).
-        tests:
-          - unique
-          - not_null
-      - name: airline
-        description: Denormalized airline name from dim_airline.
-        tests:
-          - not_null
-
-# ---
-
   - name: dim_location
     description: |
       Location dimension table combining origin, destination, and transit airports.
