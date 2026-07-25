@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: metricflow_time_spine
+    description: Daily time spine for MetricFlow metrics (one row per calendar day).
+    time_spine:
+      standard_granularity_column: date_day
+    columns:
+      - name: date_day
+        description: Calendar date at day grain.
+        granularity: day
+        data_type: date
+        tests:
+          - unique
+          - not_null
