@@ -178,7 +178,7 @@ models:
             datatypes: boolean
 
       - name: seat_comfort
-        data_type: number
+        data_type: number(38,0)
         description: Seat comfort rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -190,7 +190,7 @@ models:
             datatypes: integer
 
       - name: cabin_staff_service
-        data_type: number
+        data_type: number(38,0)
         description: Cabin staff service rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -202,7 +202,7 @@ models:
             datatypes: integer
 
       - name: food_and_beverages
-        data_type: number
+        data_type: number(38,0)
         description: Food and beverages rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -214,7 +214,7 @@ models:
             datatypes: integer
 
       - name: inflight_entertainment
-        data_type: number
+        data_type: number(38,0)
         description: Inflight entertainment rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -226,7 +226,7 @@ models:
             datatypes: integer
 
       - name: ground_service
-        data_type: number
+        data_type: number(38,0)
         description: Ground service rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -238,7 +238,7 @@ models:
             datatypes: integer
 
       - name: wifi_and_connectivity
-        data_type: number
+        data_type: number(38,0)
         description: WiFi and connectivity rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -250,7 +250,7 @@ models:
             datatypes: integer
 
       - name: value_for_money
-        data_type: number
+        data_type: number(38,0)
         description: Value for money rating (1-5 scale, null allowed).
         tests:
           - dbt_expectations.expect_column_values_to_be_between:
@@ -273,7 +273,7 @@ models:
             datatypes: boolean
 
       - name: average_rating
-        data_type: number
+        data_type: number(38,2)
         description: |
           Calculated average rating across all seven sub-ratings.
           Computed using only non-null sub-ratings. Range 0–5; null if all sub-ratings null.
