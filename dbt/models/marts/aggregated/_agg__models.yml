@@ -1,0 +1,248 @@
+version: 2
+
+models:
+  - name: agg_airlines_review
+    description: |
+      Airline-level rollup of review volume and quality metrics from fct_review.
+      Use for airline scorecards and ranking; pair with snap_agg_airlines_review
+      to see how scores move as new reviews arrive.
+      Grain: one row per airline that has at least one fact review.
+    columns:
+      - name: airline_id
+        data_type: varchar
+        description: Primary key; foreign key to dim_airline.
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_airline')
+                field: airline_id
+        config:
+          meta:
+            datatypes: string
+
+      - name: airline_name
+        data_type: varchar
+        description: Display name from dim_airline (denormalized for scorecard use).
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: string
+
+      - name: review_count
+        data_type: number
+        description: Total fact rows for the airline (should match distinct_review_count).
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 1
+        config:
+          meta:
+            datatypes: integer
+
+      - name: distinct_review_count
+        data_type: number
+        description: Count of distinct review_id values; sanity check against review_count.
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: integer
+
+      - name: verified_review_count
+        data_type: number
+        description: Reviews flagged is_verified = true.
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: integer
+
+      - name: recommended_review_count
+        data_type: number
+        description: Reviews where the reviewer recommended the airline.
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: integer
+
+      - name: layover_review_count
+        data_type: number
+        description: Reviews for itineraries that included a layover.
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: integer
+
+      - name: good_rating_count
+        data_type: number
+        description: Reviews in the 'good' rating_band (average_rating >= 4).
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: integer
+
+      - name: medium_rating_count
+        data_type: number
+        description: Reviews in the 'medium' rating_band (average_rating 2–<4).
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: integer
+
+      - name: bad_rating_count
+        data_type: number
+        description: Reviews in the 'bad' rating_band (average_rating < 2).
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: integer
+
+      - name: unknown_rating_count
+        data_type: number
+        description: Reviews with no computable average_rating (all sub-ratings null).
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: integer
+
+      - name: avg_rating
+        data_type: number(38,2)
+        description: Mean of per-review average_rating, rounded to 2 decimals.
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 5
+                row_condition: "avg_rating is not null"
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: avg_seat_comfort
+        data_type: number(38,2)
+        description: Mean seat_comfort (1–5), ignoring nulls; rounded to 2 decimals.
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: avg_cabin_staff_service
+        data_type: number(38,2)
+        description: Mean cabin_staff_service (1–5), ignoring nulls; rounded to 2 decimals.
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: avg_food_and_beverages
+        data_type: number(38,2)
+        description: Mean food_and_beverages (1–5), ignoring nulls; rounded to 2 decimals.
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: avg_inflight_entertainment
+        data_type: number(38,2)
+        description: Mean inflight_entertainment (1–5), ignoring nulls; rounded to 2 decimals.
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: avg_ground_service
+        data_type: number(38,2)
+        description: Mean ground_service (1–5), ignoring nulls; rounded to 2 decimals.
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: avg_wifi_and_connectivity
+        data_type: number(38,2)
+        description: Mean wifi_and_connectivity (1–5), ignoring nulls; rounded to 2 decimals.
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: avg_value_for_money
+        data_type: number(38,2)
+        description: Mean value_for_money (1–5), ignoring nulls; rounded to 2 decimals.
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: pct_recommended
+        data_type: number(38,4)
+        description: |
+          Share of reviews that recommend the airline (0–1 scale).
+          Null recommended treated as not recommended (0).
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 1
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: pct_verified
+        data_type: number(38,4)
+        description: |
+          Share of reviews marked verified (0–1 scale).
+          Null is_verified treated as not verified (0).
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 1
+        config:
+          meta:
+            datatypes: numeric
+
+      - name: first_review_date
+        data_type: date
+        description: Earliest date_submitted_id among the airline's fact reviews.
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: date
+
+      - name: last_review_date
+        data_type: date
+        description: Latest date_submitted_id among the airline's fact reviews.
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: date
+
+      - name: latest_source_updated_at
+        data_type: timestamp_ntz
+        description: Max source_updated_at across the airline's fact reviews.
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: timestamp
+
+      - name: dbt_loaded_at
+        data_type: timestamp_ltz
+        description: Timestamp when dbt built this rollup row.
+        tests:
+          - not_null
+        config:
+          meta:
+            datatypes: timestamp
+
+    config:
+      contract:
+        enforced: true
