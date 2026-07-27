@@ -8,3 +8,4 @@ sqlfluff==3.4.0
 # setup.cfg uses the dbt templater -- without this package `sqlfluff lint`
 # cannot render models (and the lint job is blocking).
 sqlfluff-templater-dbt==3.4.0
+elementary-data==0.19.4
