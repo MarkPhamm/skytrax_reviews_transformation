@@ -27,6 +27,11 @@ dbt deps
 dbt run --select elementary
 ```
 
+In Airflow, Elementary is a separate DAG (`skytrax_elementary`) that selects
+only `package:elementary`. The main transform DAG
+(`skytrax_dbt_transformation`) excludes that package so its graph stays
+readable. Hooks still write artifacts during transform runs.
+
 ## Anomaly tests
 
 `fct_review` has an `elementary.volume_anomalies` test (severity **warn**)

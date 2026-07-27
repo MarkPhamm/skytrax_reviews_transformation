@@ -11,12 +11,9 @@ def _notify_failure(context):
     dag_id = getattr(ti, "dag_id", "unknown_dag")
     task_id = getattr(ti, "task_id", "unknown_task")
     exception = context.get("exception")
-    print(f"[skytrax_dbt_transformation] FAILED {dag_id}.{task_id}: {exception!r}")
+    print(f"[skytrax_elementary] FAILED {dag_id}.{task_id}: {exception!r}")
 
 
-# retries=2: transient Snowflake / network blips should not red the whole DAG.
-# No TriggerRule.ALL_DONE — a failed upstream must fail the DAG, not silently
-# continue into a partial marts refresh.
 default_args = {
     "depends_on_past": False,
     "retries": 2,
@@ -37,7 +34,9 @@ profile_config = ProfileConfig(
     ),
 )
 
-dbt_transformation_dag = DbtDag(
+# Elementary-only DAG. Kept separate from skytrax_dbt_transformation so the
+# business-model graph stays readable. Schedule after the Tuesday transform.
+elementary_dag = DbtDag(
     project_config=ProjectConfig("/usr/local/airflow/dags/dbt"),
     operator_args={
         "install_deps": True,
@@ -46,17 +45,14 @@ dbt_transformation_dag = DbtDag(
     execution_config=ExecutionConfig(
         dbt_executable_path=f"{os.environ['AIRFLOW_HOME']}/dbt_venv/bin/dbt",
     ),
-    # Elementary package models are bootstrapped once via `dbt run -s elementary`
-    # (see docs/observability.md). Hooks still write artifacts during each run;
-    # keeping ~30 Elementary models in this DAG only clutters the graph.
     render_config=RenderConfig(
-        exclude=["package:elementary"],
+        select=["package:elementary"],
     ),
     default_args=default_args,
-    schedule="0 19 * * 2",  # Run at 2pm CST (19:00 UTC) on Tuesday
+    schedule="0 20 * * 2",  # 1h after skytrax_dbt_transformation (19:00 UTC Tue)
     start_date=datetime(2025, 8, 1),
     catchup=False,
-    dag_id="skytrax_dbt_transformation",
-    description="Production dbt transformation -- runs all models via PROD_DBT user",
-    tags=["dbt", "transformation", "prod"],
+    dag_id="skytrax_elementary",
+    description="Elementary observability models only (package:elementary)",
+    tags=["dbt", "elementary", "observability", "prod"],
 )
