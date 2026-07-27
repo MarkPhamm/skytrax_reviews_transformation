@@ -37,22 +37,16 @@ aggregated as (
         sum(case when r.rating_band = 'medium' then 1 else 0 end) as medium_rating_count,
         sum(case when r.rating_band = 'bad' then 1 else 0 end) as bad_rating_count,
         sum(case when r.rating_band = 'unknown' then 1 else 0 end) as unknown_rating_count,
-        cast(round(avg(r.average_rating), 2) as number(38, 2)) as avg_rating,
-        cast(round(avg(r.seat_comfort), 2) as number(38, 2)) as avg_seat_comfort,
-        cast(round(avg(r.cabin_staff_service), 2) as number(38, 2)) as avg_cabin_staff_service,
-        cast(round(avg(r.food_and_beverages), 2) as number(38, 2)) as avg_food_and_beverages,
-        cast(round(avg(r.inflight_entertainment), 2) as number(38, 2)) as avg_inflight_entertainment,
-        cast(round(avg(r.ground_service), 2) as number(38, 2)) as avg_ground_service,
-        cast(round(avg(r.wifi_and_connectivity), 2) as number(38, 2)) as avg_wifi_and_connectivity,
-        cast(round(avg(r.value_for_money), 2) as number(38, 2)) as avg_value_for_money,
-        cast(
-            round(avg(case when r.recommended then 1.0 else 0.0 end), 4)
-            as number(38, 4)
-        ) as pct_recommended,
-        cast(
-            round(avg(case when r.is_verified then 1.0 else 0.0 end), 4)
-            as number(38, 4)
-        ) as pct_verified,
+        round(avg(r.average_rating), 2)::number(38, 2) as avg_rating,
+        round(avg(r.seat_comfort), 2)::number(38, 2) as avg_seat_comfort,
+        round(avg(r.cabin_staff_service), 2)::number(38, 2) as avg_cabin_staff_service,
+        round(avg(r.food_and_beverages), 2)::number(38, 2) as avg_food_and_beverages,
+        round(avg(r.inflight_entertainment), 2)::number(38, 2) as avg_inflight_entertainment,
+        round(avg(r.ground_service), 2)::number(38, 2) as avg_ground_service,
+        round(avg(r.wifi_and_connectivity), 2)::number(38, 2) as avg_wifi_and_connectivity,
+        round(avg(r.value_for_money), 2)::number(38, 2) as avg_value_for_money,
+        round(avg(case when r.recommended then 1.0 else 0.0 end), 4)::number(38, 4) as pct_recommended,
+        round(avg(case when r.is_verified then 1.0 else 0.0 end), 4)::number(38, 4) as pct_verified,
         min(r.date_submitted_id) as first_review_date,
         max(r.date_submitted_id) as last_review_date,
         max(r.source_updated_at) as latest_source_updated_at,
