@@ -46,6 +46,8 @@ models:
       +schema: MARTS
       +enabled: true
       +tags: ['marts']
+      aggregated:
+        +tags: ['aggregated']
 
 seeds:
   skytrax_transformation:
