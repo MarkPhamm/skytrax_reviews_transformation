@@ -1,0 +1,258 @@
+# MetricFlow / dbt Semantic Layer (legacy standalone YAML — dbt-core 1.10).
+# Airline scorecard metrics from the pre-aggregated agg_airlines_review mart.
+# Metric names are prefixed with airline_ so they do not collide with fct_review.
+#
+# Example after `dbt parse`:
+#   mf query --metrics airline_avg_rating --group-by airline_entity__airline_name
+#   mf query --metrics airline_pct_recommended --group-by airline_entity__airline_name --order -airline_pct_recommended --limit 10
+
+version: 2
+
+semantic_models:
+  - name: agg_airlines_review
+    description: |
+      Airline-level review scorecard semantic model on agg_airlines_review.
+      Grain is one row per airline. Count measures sum cleanly across airlines;
+      avg_* measures are unweighted when rolled up further (prefer grouping by
+      airline for scorecards). airline_pct_recommended is a ratio of counts so
+      it stays review-weighted when aggregated.
+    model: ref('agg_airlines_review')
+    defaults:
+      agg_time_dimension: last_review_date
+    entities:
+      - name: airline_entity
+        type: primary
+        expr: airline_id
+    dimensions:
+      - name: airline_name
+        type: categorical
+        description: Display name from dim_airline (denormalized on the agg table).
+      - name: first_review_date
+        type: time
+        type_params:
+          time_granularity: day
+        description: Earliest review submission date for the airline.
+      - name: last_review_date
+        type: time
+        type_params:
+          time_granularity: day
+        description: Latest review submission date for the airline.
+    measures:
+      - name: airline_reviews
+        description: Total fact review rows for the airline.
+        agg: sum
+        expr: review_count
+      - name: airline_distinct_reviews
+        description: Distinct review_id count for the airline.
+        agg: sum
+        expr: distinct_review_count
+      - name: airline_verified_reviews
+        description: Reviews flagged is_verified = true.
+        agg: sum
+        expr: verified_review_count
+      - name: airline_recommended_reviews
+        description: Reviews that recommended the airline.
+        agg: sum
+        expr: recommended_review_count
+      - name: airline_layover_reviews
+        description: Reviews for itineraries that included a layover.
+        agg: sum
+        expr: layover_review_count
+      - name: airline_good_ratings
+        description: Reviews in the good rating_band.
+        agg: sum
+        expr: good_rating_count
+      - name: airline_medium_ratings
+        description: Reviews in the medium rating_band.
+        agg: sum
+        expr: medium_rating_count
+      - name: airline_bad_ratings
+        description: Reviews in the bad rating_band.
+        agg: sum
+        expr: bad_rating_count
+      - name: airline_unknown_ratings
+        description: Reviews with unknown rating_band.
+        agg: sum
+        expr: unknown_rating_count
+      - name: airline_average_rating
+        description: |
+          Pre-aggregated mean average_rating per airline.
+          Unweighted if averaged across airlines without grouping by airline.
+        agg: average
+        expr: avg_rating
+      - name: airline_average_seat_comfort
+        description: Pre-aggregated mean seat_comfort per airline.
+        agg: average
+        expr: avg_seat_comfort
+      - name: airline_average_cabin_staff_service
+        description: Pre-aggregated mean cabin_staff_service per airline.
+        agg: average
+        expr: avg_cabin_staff_service
+      - name: airline_average_food_and_beverages
+        description: Pre-aggregated mean food_and_beverages per airline.
+        agg: average
+        expr: avg_food_and_beverages
+      - name: airline_average_inflight_entertainment
+        description: Pre-aggregated mean inflight_entertainment per airline.
+        agg: average
+        expr: avg_inflight_entertainment
+      - name: airline_average_ground_service
+        description: Pre-aggregated mean ground_service per airline.
+        agg: average
+        expr: avg_ground_service
+      - name: airline_average_wifi_and_connectivity
+        description: Pre-aggregated mean wifi_and_connectivity per airline.
+        agg: average
+        expr: avg_wifi_and_connectivity
+      - name: airline_average_value_for_money
+        description: Pre-aggregated mean value_for_money per airline.
+        agg: average
+        expr: avg_value_for_money
+      - name: airline_pct_verified_avg
+        description: |
+          Pre-aggregated share of verified reviews (0–1).
+          Unweighted if averaged across airlines.
+        agg: average
+        expr: pct_verified
+
+metrics:
+  - name: airline_review_count
+    label: Airline Review Count
+    description: Total fact review rows, summed from the airline rollup.
+    type: simple
+    type_params:
+      measure: airline_reviews
+
+  - name: airline_distinct_review_count
+    label: Airline Distinct Review Count
+    description: Distinct review_id count, summed from the airline rollup.
+    type: simple
+    type_params:
+      measure: airline_distinct_reviews
+
+  - name: airline_verified_review_count
+    label: Airline Verified Review Count
+    description: Count of verified reviews across airlines in the query grain.
+    type: simple
+    type_params:
+      measure: airline_verified_reviews
+
+  - name: airline_recommended_review_count
+    label: Airline Recommended Review Count
+    description: Count of recommending reviews across airlines in the query grain.
+    type: simple
+    type_params:
+      measure: airline_recommended_reviews
+
+  - name: airline_layover_review_count
+    label: Airline Layover Review Count
+    description: Count of layover reviews across airlines in the query grain.
+    type: simple
+    type_params:
+      measure: airline_layover_reviews
+
+  - name: airline_good_rating_count
+    label: Airline Good Rating Count
+    description: Count of good-band reviews across airlines in the query grain.
+    type: simple
+    type_params:
+      measure: airline_good_ratings
+
+  - name: airline_medium_rating_count
+    label: Airline Medium Rating Count
+    description: Count of medium-band reviews across airlines in the query grain.
+    type: simple
+    type_params:
+      measure: airline_medium_ratings
+
+  - name: airline_bad_rating_count
+    label: Airline Bad Rating Count
+    description: Count of bad-band reviews across airlines in the query grain.
+    type: simple
+    type_params:
+      measure: airline_bad_ratings
+
+  - name: airline_unknown_rating_count
+    label: Airline Unknown Rating Count
+    description: Count of unknown-band reviews across airlines in the query grain.
+    type: simple
+    type_params:
+      measure: airline_unknown_ratings
+
+  - name: airline_avg_rating
+    label: Airline Average Rating
+    description: |
+      Mean of pre-aggregated airline avg_rating.
+      Group by airline_name for scorecards; cross-airline rollups are unweighted.
+    type: simple
+    type_params:
+      measure: airline_average_rating
+
+  - name: airline_avg_seat_comfort
+    label: Airline Average Seat Comfort
+    description: Mean of pre-aggregated airline avg_seat_comfort.
+    type: simple
+    type_params:
+      measure: airline_average_seat_comfort
+
+  - name: airline_avg_cabin_staff_service
+    label: Airline Average Cabin Staff Service
+    description: Mean of pre-aggregated airline avg_cabin_staff_service.
+    type: simple
+    type_params:
+      measure: airline_average_cabin_staff_service
+
+  - name: airline_avg_food_and_beverages
+    label: Airline Average Food And Beverages
+    description: Mean of pre-aggregated airline avg_food_and_beverages.
+    type: simple
+    type_params:
+      measure: airline_average_food_and_beverages
+
+  - name: airline_avg_inflight_entertainment
+    label: Airline Average Inflight Entertainment
+    description: Mean of pre-aggregated airline avg_inflight_entertainment.
+    type: simple
+    type_params:
+      measure: airline_average_inflight_entertainment
+
+  - name: airline_avg_ground_service
+    label: Airline Average Ground Service
+    description: Mean of pre-aggregated airline avg_ground_service.
+    type: simple
+    type_params:
+      measure: airline_average_ground_service
+
+  - name: airline_avg_wifi_and_connectivity
+    label: Airline Average Wifi And Connectivity
+    description: Mean of pre-aggregated airline avg_wifi_and_connectivity.
+    type: simple
+    type_params:
+      measure: airline_average_wifi_and_connectivity
+
+  - name: airline_avg_value_for_money
+    label: Airline Average Value For Money
+    description: Mean of pre-aggregated airline avg_value_for_money.
+    type: simple
+    type_params:
+      measure: airline_average_value_for_money
+
+  - name: airline_pct_verified
+    label: Airline Percent Verified
+    description: |
+      Share of verified reviews (0–1). Uses the pre-aggregated pct_verified
+      average — unweighted across airlines. Prefer airline_pct_recommended
+      pattern (ratio of counts) when a review-weighted rate is required.
+    type: simple
+    type_params:
+      measure: airline_pct_verified_avg
+
+  - name: airline_pct_recommended
+    label: Airline Percent Recommended
+    description: |
+      Share of reviews that recommend the airline
+      (recommended_review_count / review_count). Review-weighted across airlines.
+    type: ratio
+    type_params:
+      numerator: airline_recommended_review_count
+      denominator: airline_review_count
