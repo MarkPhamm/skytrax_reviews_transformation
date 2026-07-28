@@ -7,23 +7,17 @@ models:
       Includes calculated average ratings and categorical rating bands.
       All foreign keys reference conformed dimensions.
       Grain: one row per review submission.
-      Materialized incrementally (merge on review_key) using the source
+      Materialized incrementally (merge on review_id) using the source
       updated_at high-water mark with a configurable lookback window.
     columns:
-      - name: review_key
-        data_type: varchar
-        description: Surrogate key for the review fact (deterministic, idempotent).
-        tests:
-          - unique
-          - not_null
-        config:
-          meta:
-            datatypes: string
-
       - name: review_id
         data_type: varchar
-        description: Review identifier — deterministic hash of the review natural key, assigned in staging.
+        description: |
+          Primary key — deterministic hash of the review natural key
+          (customer_name, nationality, airline_name, date_submitted, review),
+          assigned in staging.
         tests:
+          - unique
           - not_null
         config:
           meta:

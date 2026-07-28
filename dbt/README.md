@@ -17,7 +17,7 @@ Three layers (see `../data_model/schema.png` for the ERD):
 
 Key design points:
 
-- **Incremental fact** — `fct_review` merges on `review_key` using the source
+- **Incremental fact** — `fct_review` merges on `review_id` using the source
   `updated_at` high-water mark with a lookback window
   (`--vars '{incremental_lookback_days: N}'`, default 3). Backfill with
   `dbt run -s fct_review --full-refresh`.
