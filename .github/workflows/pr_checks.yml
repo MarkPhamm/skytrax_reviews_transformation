@@ -280,8 +280,8 @@ jobs:
   # Job 4: Run changed models in the staging schema
   # ---------------------------------------------------------------------------
   # First clones production tables into staging (zero-copy), then runs only
-  # the changed models. This way, changed models can reference upstream
-  # parent tables that exist in staging via the clone.
+  # the changed models twice: incremental (MERGE into cloned prod shape), then
+  # --full-refresh (clean rebuild for tests / stale-clone safety).
   # ---------------------------------------------------------------------------
   run_changed:
     name: Run Changed Models
@@ -315,20 +315,38 @@ jobs:
             --state prod_state \
             --target staging
 
-      # Actually execute the changed models against Snowflake's staging schema.
+      # Incremental path: MERGE into the cloned prod tables. Catches schema/type
+      # drift, unique_key merge failures, and lookback bugs that --full-refresh
+      # would hide. New models with no cloned table create normally.
       # --fail-fast stops on the first failure instead of trying to run everything.
-      # --full-refresh: staging is cloned fresh from prod every run, so an
-      # incremental model here would try to MERGE into whatever schema/data
-      # prod happens to have (e.g. a stale column type from before a contract
-      # change), instead of building cleanly from the current model's logic.
-      - name: Run changed models
+      - name: Run changed models (incremental)
         working-directory: ./dbt
         run: |
           source ../dbt_venv/bin/activate
 
           MODELS="${{ needs.setup_env.outputs.changed_models }}"
           if [ -n "$MODELS" ]; then
-            echo "Running: $MODELS"
+            echo "Running (incremental): $MODELS"
+            dbt run \
+              --profiles-dir ./ \
+              --select $MODELS \
+              --target staging \
+              --fail-fast
+          else
+            echo "No changed models to run."
+          fi
+
+      # Full-refresh path: rebuild clean from current model SQL so tests see a
+      # fresh relation and downstream tables are not left as stale clones
+      # (e.g. after an upstream type/contract change).
+      - name: Run changed models (full-refresh)
+        working-directory: ./dbt
+        run: |
+          source ../dbt_venv/bin/activate
+
+          MODELS="${{ needs.setup_env.outputs.changed_models }}"
+          if [ -n "$MODELS" ]; then
+            echo "Running (full-refresh): $MODELS"
             dbt run \
               --profiles-dir ./ \
               --select $MODELS \
