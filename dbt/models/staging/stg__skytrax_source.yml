@@ -23,3 +23,77 @@ sources:
             warn_after: {count: 3, period: day}
             error_after: {count: 7, period: day}
           loaded_at_field: updated_at
+
+      - name: LOAD_AUDIT
+        description: |
+          Post-load reconciliation log written by the extract-load pipeline
+          after every COPY INTO (one row per file). Status/row counts come from
+          Snowflake's COPY result; SKIPPED means the file was already loaded.
+        config:
+          tags: ['load_audit']
+          # Same laptop-local EL cadence as AIRLINE_REVIEWS.
+          freshness:
+            warn_after: {count: 3, period: day}
+            error_after: {count: 7, period: day}
+          loaded_at_field: load_ts
+        columns:
+          - name: load_ts
+            description: Warehouse timestamp when the audit row was inserted.
+            data_tests:
+              - not_null:
+                  config:
+                    tags: ['load_audit']
+          - name: category
+            description: Review category loaded (airline, seat, lounge, airport).
+            data_tests:
+              - not_null:
+                  config:
+                    tags: ['load_audit']
+              - accepted_values:
+                  arguments:
+                    values: ['airline', 'seat', 'lounge', 'airport']
+                  config:
+                    tags: ['load_audit']
+          - name: s3_key
+            description: S3 object key (or prefix) that COPY INTO targeted.
+            data_tests:
+              - not_null:
+                  config:
+                    tags: ['load_audit']
+          - name: target_table
+            description: Fully qualified Snowflake table that received the load.
+            data_tests:
+              - not_null:
+                  config:
+                    tags: ['load_audit']
+          - name: status
+            description: |
+              COPY INTO file status (LOADED / PARTIALLY_LOADED / LOAD_FAILED)
+              or SKIPPED when the file was already loaded on a prior run.
+            data_tests:
+              - not_null:
+                  config:
+                    tags: ['load_audit']
+              - accepted_values:
+                  arguments:
+                    values: ['LOADED', 'PARTIALLY_LOADED', 'LOAD_FAILED', 'SKIPPED']
+                  config:
+                    tags: ['load_audit']
+          - name: rows_parsed
+            description: Rows Snowflake parsed from the file.
+            data_tests:
+              - not_null:
+                  config:
+                    tags: ['load_audit']
+          - name: rows_loaded
+            description: Rows successfully loaded into the target table.
+            data_tests:
+              - not_null:
+                  config:
+                    tags: ['load_audit']
+          - name: errors_seen
+            description: Rejected/error row count from COPY INTO.
+            data_tests:
+              - not_null:
+                  config:
+                    tags: ['load_audit']
