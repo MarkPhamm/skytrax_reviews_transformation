@@ -495,11 +495,11 @@ models:
 
       - name: aircraft_manufacturer
         data_type: varchar
-        description: Aircraft manufacturer (Airbus, Boeing, Embraer, Saab, Unknown).
+        description: Leading token of aircraft_model (e.g. Boeing, Airbus, Embraer, ATR, Saab, Unknown).
 
       - name: seat_capacity
         data_type: number
-        description: Maximum seating capacity of the aircraft.
+        description: Typical seating capacity from fuzzy family match; null when no seed family matches.
 
     config:
       contract:
