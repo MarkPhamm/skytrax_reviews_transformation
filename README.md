@@ -6,7 +6,7 @@ At Insurify, I run `dbt build --defer --favor-state` every day and curl the prod
 
 This project is my attempt to build all of that from scratch. I spent a full day setting up a proper CI/CD pipeline and local dev environment for a small team of 3 analysts — configuring slim CI with merge-base state comparison, uploading manifests to S3 after every deploy, hosting dbt docs on CloudFront, wiring up OIDC so GitHub Actions never touches a static AWS credential, and managing every piece of Snowflake infrastructure (users, roles, schemas, warehouses, grants) through Terraform.
 
-[Part 1 (Extract-Load)](https://github.com/MarkPhamm/skytrax_reviews_extract_load) scrapes 160,000+ airline reviews from AirlineQuality.com and loads them into Snowflake. This project picks up where that left off — transforming raw reviews into a star schema, with full CI/CD, Infrastructure as Code, and orchestration.
+[Part 1 (Extract-Load)](https://github.com/MarkPhamm/skytrax_reviews_extract_load) scraped 160,000+ airline reviews from AirlineQuality.com (Skytrax — **permanently closed**; historical archive only) and loaded them into Snowflake. This project picks up where that left off — transforming raw reviews into a star schema, with full CI/CD, Infrastructure as Code, and orchestration.
 
 - **Star schema** — Kimball methodology with 5 dimensions and 1 fact table, deterministic surrogate keys
 - **Slim CI** — only changed models are linted, compiled, run, and tested on PRs via merge-base state comparison
