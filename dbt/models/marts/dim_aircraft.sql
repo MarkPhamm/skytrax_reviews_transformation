@@ -70,11 +70,21 @@ final as (
     select
         {{ dbt_utils.generate_surrogate_key(['raw_aircraft.aircraft_model']) }} as aircraft_id,
         raw_aircraft.aircraft_model,
-        mapped.manufacturer as aircraft_manufacturer,
+        -- Manufacturer is the leading token in review text (e.g. "Boeing 737-800WINGLET").
+        case
+            when lower(split_part(raw_aircraft.aircraft_model, ' ', 1)) = 'unknown' then 'Unknown'
+            else split_part(raw_aircraft.aircraft_model, ' ', 1)
+        end as aircraft_manufacturer,
         mapped.capacity as seat_capacity,
     from raw_aircraft
     left join mapped
-        on raw_aircraft.aircraft_model = mapped.model
+        -- Fuzzy match for capacity only: variants (neo, winglets, suffixes) still map to a family.
+        -- Prefer the longest seed match when multiple families could apply.
+        on contains(upper(raw_aircraft.aircraft_model), upper(mapped.model))
+    qualify row_number() over (
+        partition by raw_aircraft.aircraft_model
+        order by length(mapped.model) desc nulls last
+    ) = 1
 
 )
 
