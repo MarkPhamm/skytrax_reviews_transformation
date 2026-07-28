@@ -25,7 +25,6 @@ raw_aircraft as (
 mapped as (
 
     {{ aircraft_family_seed() }}
-
 ),
 
 final as (
@@ -39,9 +38,9 @@ final as (
     left join mapped
         on {{ fuzzy_match_aircraft_family('raw_aircraft.aircraft_model', 'mapped.model') }}
     qualify row_number() over (
-        partition by raw_aircraft.aircraft_model
-        order by length(mapped.model) desc nulls last
-    ) = 1
+            partition by raw_aircraft.aircraft_model
+            order by length(mapped.model) desc nulls last
+        ) = 1
 
 )
 
