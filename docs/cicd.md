@@ -178,11 +178,19 @@ dbt compile --select <changed_models> --target staging
 
 #### Job 4: Run Changed Models
 
-**Goal:** Actually execute the changed models against Snowflake.
+**Goal:** Actually execute the changed models against Snowflake — both
+materialization paths.
 
 ```bash
 dbt clone --state prod_state --target staging
 
+# 1) Incremental: MERGE into cloned prod tables (catch merge/schema drift)
+dbt run \
+  --select <changed_models> \
+  --target staging \
+  --fail-fast
+
+# 2) Full-refresh: clean rebuild before tests
 dbt run \
   --select <changed_models> \
   --target staging \
@@ -193,9 +201,10 @@ dbt run \
 - `dbt clone` first zero-copies the production tables into `STAGING`,
   so changed models can reference upstream parents that exist there
 - `--target staging` writes to the `STAGING` schema (CI scratch space)
-- `--full-refresh` rebuilds incremental models from scratch -- the clone
-  is recreated from prod every run, so merging into it would test against
-  whatever schema/data prod happens to have
+- Incremental run first probes the real MERGE path against prod-shaped
+  clones (schema/type drift, unique_key, lookback)
+- `--full-refresh` then rebuilds from scratch so tests see a clean
+  relation and stale clones are not left in place after upstream changes
 - `--fail-fast` stops on first failure to save time
 - Only runs if compilation succeeded (depends on Job 3)
 
