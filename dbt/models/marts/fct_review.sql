@@ -1,6 +1,6 @@
 {{ config(
     materialized='incremental',
-    unique_key='review_key',
+    unique_key='review_id',
     incremental_strategy='merge',
     on_schema_change='fail',
 ) }}
@@ -8,9 +8,9 @@
 -- fct_review.sql
 -- Review fact table with enrichments (average ratings and rating bands)
 -- Grain: one row per review submission
--- Surrogate key: generated using dbt_utils for deterministic, idempotent key generation
+-- Primary key: review_id (deterministic natural-key hash from staging)
 -- All measures and dimensions are foreign keys to conformed dimensions
--- Incremental: merge on review_key; only rows with a source updated_at newer
+-- Incremental: merge on review_id; only rows with a source updated_at newer
 -- than the high-water mark are processed, minus a lookback window
 -- (var incremental_lookback_days, default 3) to absorb late-arriving updates.
 -- Backfill with: dbt run -s fct_review --full-refresh
@@ -131,7 +131,7 @@ with_ratings as (
 final as (
 
     select
-        {{ dbt_utils.generate_surrogate_key(['review_id', 'customer_name', 'date_submitted']) }} as review_key,
+        review_id,
         customer_id,
         airline_id,
         date_submitted_id,
@@ -140,7 +140,6 @@ final as (
         destination_location_id,
         transit_location_id,
         aircraft_id,
-        review_id,
         is_verified,
         seat_type,
         type_of_traveller,

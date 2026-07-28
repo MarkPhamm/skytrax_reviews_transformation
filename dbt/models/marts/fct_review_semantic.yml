@@ -17,7 +17,7 @@ semantic_models:
     entities:
       - name: review
         type: primary
-        expr: review_key
+        expr: review_id
       - name: airline_entity
         type: foreign
         expr: airline_id

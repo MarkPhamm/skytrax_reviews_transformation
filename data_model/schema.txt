@@ -1,6 +1,6 @@
 fct_review
 ----------
-review_key PK string
+review_id PK string
 customer_id string FK >- dim_customer.customer_id
 airline_id string FK >- dim_airline.airline_id
 date_submitted_id date FK >- dim_date.date_id
@@ -9,7 +9,6 @@ origin_location_id string FK >- dim_location.location_id
 destination_location_id string FK >- dim_location.location_id
 transit_location_id string FK >- dim_location.location_id
 aircraft_id string FK >- dim_aircraft.aircraft_id
-review_id string
 is_verified bool
 seat_type string
 type_of_traveller NULL string
