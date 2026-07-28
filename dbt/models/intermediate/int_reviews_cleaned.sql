@@ -6,6 +6,7 @@
 -- Intermediate layer: clean and normalize staging data
 -- Grain: one row per review submission
 -- All business logic and nullability handling centralized here
+-- airline_name cleaned via clean_airline_name() macro
 
 with source_data as (
 
@@ -23,7 +24,7 @@ cleaned as (
         coalesce(nationality, 'unknown') as nationality,
         date_submitted,
         date_flown,
-        coalesce(airline_name, 'unknown') as airline_name,
+        {{ clean_airline_name('airline_name') }} as airline_name,
         coalesce(origin_city, 'unknown') as origin_city,
         coalesce(origin_airport, 'unknown') as origin_airport,
         coalesce(destination_city, 'unknown') as destination_city,
