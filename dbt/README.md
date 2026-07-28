@@ -57,8 +57,9 @@ Targets: `dev` (default), `staging` (CI), `prod` (deploy) — see `profiles.yml`
 ## CI/CD
 
 - `pr_checks.yml` — Slim CI: sqlfluff, compile, `dbt clone` prod → staging,
-  then build/test `state:modified+`/`state:new+` (the `+` matters — see below)
-  with `--full-refresh` in the staging build steps.
+  then build/test `state:modified+`/`state:new+` (the `+` matters — see below).
+  Staging runs changed models twice: incremental (MERGE into cloned prod),
+  then `--full-refresh` before tests.
 - `deploy_main.yml` — deploy on merge to `main` + weekly cron: `dbt build
   --select state:modified+ --defer --favor-state` against the prod manifest on
   S3, then publish dbt docs to CloudFront.
