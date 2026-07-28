@@ -27,7 +27,10 @@ models:
       - name: date_flown
         description: Date when the flight was taken.
       - name: airline_name
-        description: Name of the airline. Null values coalesced to 'Unknown'.
+        description: |
+          Airline name, lowercased and trimmed. Scraped review-count suffixes
+          (e.g. "Frontier Airlines3843 Reviews") are stripped before coalesce
+          to 'unknown' when null/empty.
         tests:
           - not_null
       - name: origin_city
