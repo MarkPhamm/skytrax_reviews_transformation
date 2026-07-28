@@ -95,6 +95,8 @@ Full documentation is auto-generated and hosted on CloudFront: **[Live dbt Docs]
 
 ![schema](data_model/schema.png)
 
+Source text lives in [`data_model/schema.txt`](data_model/schema.txt). Paste it into [QuickDBD](https://www.quickdatabasediagrams.com/) to edit or regenerate the ERD, then export/replace `data_model/schema.png`.
+
 ## Snowflake Infrastructure
 
 All Snowflake resources are managed by Terraform — users, roles, grants, schemas, warehouses. No manual setup in the Snowflake UI.

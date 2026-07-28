@@ -4,22 +4,23 @@ review_key PK string
 customer_id string FK >- dim_customer.customer_id
 airline_id string FK >- dim_airline.airline_id
 date_submitted_id date FK >- dim_date.date_id
-date_flown_id date FK >- dim_date.date_id
+date_flown_id NULL date FK >- dim_date.date_id
 origin_location_id string FK >- dim_location.location_id
 destination_location_id string FK >- dim_location.location_id
-transit_location_id NULL string FK >- dim_location.location_id
-aircraft_id NULL string FK >- dim_aircraft.aircraft_id
+transit_location_id string FK >- dim_location.location_id
+aircraft_id string FK >- dim_aircraft.aircraft_id
 review_id string
 is_verified bool
 seat_type string
 type_of_traveller NULL string
+has_layover bool
 seat_comfort NULL int
 cabin_staff_service NULL int
 food_and_beverages NULL int
-inflight_entertainment NULL float
-ground_service NULL float
+inflight_entertainment NULL int
+ground_service NULL int
 wifi_and_connectivity NULL int
-value_for_money int
+value_for_money NULL int
 recommended bool
 average_rating NULL float
 rating_band string
@@ -38,6 +39,7 @@ dim_airline
 -----------
 airline_id PK string
 airline_name string
+airline_name_cleaned string
 
 dim_location
 -----------
@@ -50,7 +52,7 @@ dim_aircraft
 aircraft_id PK string
 aircraft_model string
 aircraft_manufacturer string
-seat_capacity int
+seat_capacity NULL int
 
 dim_date
 --------
