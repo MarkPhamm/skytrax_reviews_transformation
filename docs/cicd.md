@@ -202,7 +202,7 @@ dbt run \
   so changed models can reference upstream parents that exist there
 - `--target staging` writes to the `STAGING` schema (CI scratch space)
 - Incremental run first probes the real MERGE path against prod-shaped
-  clones (schema/type drift, unique_key, lookback)
+  clones (schema/type drift, unique_key, HWM filter)
 - `--full-refresh` then rebuilds from scratch so tests see a clean
   relation and stale clones are not left in place after upstream changes
 - `--fail-fast` stops on first failure to save time

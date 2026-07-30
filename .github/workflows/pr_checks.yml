@@ -316,7 +316,7 @@ jobs:
             --target staging
 
       # Incremental path: MERGE into the cloned prod tables. Catches schema/type
-      # drift, unique_key merge failures, and lookback bugs that --full-refresh
+      # drift, unique_key merge failures, and HWM filter bugs that --full-refresh
       # would hide. New models with no cloned table create normally.
       # --fail-fast stops on the first failure instead of trying to run everything.
       - name: Run changed models (incremental)

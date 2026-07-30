@@ -8,7 +8,7 @@ models:
       All foreign keys reference conformed dimensions.
       Grain: one row per review submission.
       Materialized incrementally (merge on review_id) using the source
-      updated_at high-water mark with a configurable lookback window.
+      updated_at high-water mark (no lookback — watermark moves with each change).
     columns:
       - name: review_id
         data_type: varchar

@@ -17,9 +17,10 @@ Three layers (see `../data_model/schema.png` for the ERD):
 
 Key design points:
 
-- **Incremental fact** — `fct_review` merges on `review_id` using the source
-  `updated_at` high-water mark with a lookback window
-  (`--vars '{incremental_lookback_days: N}'`, default 3). Backfill with
+- **Incremental fact** — `fct_review` merges on `review_id` using a pure
+  `updated_at` high-water mark (no lookback; late/changed rows bump
+  `updated_at`). Lookback would only be needed for event-time filters
+  (e.g. `date_submitted`). Backfill with
   `dbt run -s fct_review --full-refresh`.
 - **Contract** — `fct_review` has an enforced dbt contract (column names + types).
 - **Governance** — `dim_customer.customer_name`/`nationality` get the
