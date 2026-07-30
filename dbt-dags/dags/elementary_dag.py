@@ -35,7 +35,7 @@ profile_config = ProfileConfig(
 )
 
 # Elementary-only DAG. Kept separate from skytrax_dbt_transformation so the
-# business-model graph stays readable. Schedule after the Tuesday transform.
+# business-model graph stays readable. Schedule after the daily transform.
 elementary_dag = DbtDag(
     project_config=ProjectConfig("/usr/local/airflow/dags/dbt"),
     operator_args={
@@ -49,7 +49,7 @@ elementary_dag = DbtDag(
         select=["package:elementary"],
     ),
     default_args=default_args,
-    schedule="0 20 * * 2",  # 1h after skytrax_dbt_transformation (19:00 UTC Tue)
+    schedule="0 20 * * *",  # 1h after skytrax_dbt_transformation (19:00 UTC daily)
     start_date=datetime(2025, 8, 1),
     catchup=False,
     dag_id="skytrax_elementary",

@@ -53,7 +53,7 @@ dbt_transformation_dag = DbtDag(
         exclude=["package:elementary"],
     ),
     default_args=default_args,
-    schedule="0 19 * * 2",  # Run at 2pm CST (19:00 UTC) on Tuesday
+    schedule="0 19 * * *",  # Daily at 3pm EDT (19:00 UTC)
     start_date=datetime(2025, 8, 1),
     catchup=False,
     dag_id="skytrax_dbt_transformation",
