@@ -25,7 +25,7 @@ with base as (
         -- instead, e.g. src.date_submitted, use a lookback window:
         --   where src.date_submitted > dateadd('day', -{{ var('incremental_lookback_days', 3) }}, max(...))
         where src.updated_at > (
-                select max(prev.source_updated_at)
+                select max(prev.source_updated_at) as max_source_updated_at,
                 from {{ this }} as prev
             )
     {% endif %}
