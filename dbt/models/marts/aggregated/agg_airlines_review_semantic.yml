@@ -4,7 +4,9 @@
 #
 # Example after `dbt parse`:
 #   mf query --metrics airline_avg_rating --group-by airline_entity__airline_name
-#   mf query --metrics airline_pct_recommended --group-by airline_entity__airline_name --order -airline_pct_recommended --limit 10
+#   mf query --metrics airline_pct_recommended --group-by airline_entity__airline_name \
+#     --where "{{ Metric('airline_review_count', group_by=['airline_entity']) }} >= 100" \
+#     --order -airline_pct_recommended --limit 10
 
 version: 2
 
