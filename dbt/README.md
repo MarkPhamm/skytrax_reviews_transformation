@@ -53,7 +53,7 @@ Targets: `dev` (default), `staging` (CI), `prod` (deploy) — see `profiles.yml`
   asserts the `average_rating`/`rating_band` derivation.
 - **Singular test**: `tests/assert_fct_review_one_row_per_review_id.sql`
   guards the dedup + merge-key invariant.
-- **Source freshness**: warn 12h / error 1d on `RAW.AIRLINE_REVIEWS.updated_at`.
+- **Source freshness**: warn 3d / error 7d on `RAW.AIRLINE_REVIEWS.updated_at` (laptop-paced loads).
 
 ## CI/CD
 

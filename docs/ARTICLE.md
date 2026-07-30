@@ -2,7 +2,7 @@
 
 Hi everyone, I'm Mark - Analytics Engineer at Insurify.
 
-**TLDR:** Part 2 - Transformation pipeline that takes 160,000+ raw airline reviews from Snowflake (loaded in [Part 1](https://github.com/MarkPhamm/skytrax_reviews_extract_load)) and transforms them into a Kimball star schema using dbt, with full CI/CD (slim CI + defer/favor-state CD), Infrastructure as Code (Terraform for Snowflake RBAC + AWS), and auto-hosted dbt docs on CloudFront.
+**TLDR:** Part 2 - Transformation pipeline that takes raw reviews from Snowflake (loaded in [Part 1](https://github.com/MarkPhamm/skytrax_reviews_extract_load): ~160k+ rows across four review types; ~117k airline-review grain in marts) and transforms them into a Kimball star schema using dbt, with full CI/CD (slim CI + defer/favor-state CD), Infrastructure as Code (Terraform for Snowflake RBAC + AWS), and auto-hosted dbt docs on CloudFront.
 
 This is the second part of my series where I build end-to-end data pipelines following best practices I learned at Insurify. In [Part 1](https://github.com/MarkPhamm/skytrax_reviews_extract_load), we built the ingestion pipeline — scraping airline reviews, staging them in S3, and loading into Snowflake. Now we pick up where that left off: transforming raw data into analytical models, setting up proper access control for a small team, and building a CI/CD pipeline that only rebuilds what changed.
 
