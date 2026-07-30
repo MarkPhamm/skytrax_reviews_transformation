@@ -11,9 +11,9 @@
 -- Primary key: review_id (deterministic natural-key hash from staging)
 -- All measures and dimensions are foreign keys to conformed dimensions
 -- Incremental: merge on review_id; only rows with a source updated_at newer
--- than the high-water mark are processed, minus a lookback window
--- (var incremental_lookback_days, default 3) to absorb late-arriving updates.
--- Backfill with: dbt run -s fct_review --full-refresh
+-- than the high-water mark are processed. Pure HWM on updated_at — no lookback
+-- (late/changed rows bump updated_at). Lookback would be needed for event-time
+-- filters (e.g. date_submitted). Backfill with: dbt run -s fct_review --full-refresh
 
 with base as (
 
@@ -21,8 +21,11 @@ with base as (
         src.*,
     from {{ ref('int_reviews_cleaned') }} as src
     {% if is_incremental() %}
+        -- Pure HWM on updated_at (no lookback). If filtering on event time
+        -- instead, e.g. src.date_submitted, use a lookback window:
+        --   where src.date_submitted > dateadd('day', -{{ var('incremental_lookback_days', 3) }}, max(...))
         where src.updated_at > (
-                select dateadd('day', -{{ var('incremental_lookback_days', 3) }}, max(prev.source_updated_at))
+                select max(prev.source_updated_at) as max_source_updated_at,
                 from {{ this }} as prev
             )
     {% endif %}
