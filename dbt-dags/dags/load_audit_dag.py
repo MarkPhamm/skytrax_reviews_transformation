@@ -23,10 +23,9 @@ def _notify_failure(context):
     print(f"[skytrax_load_audit] FAILED {dag_id}.{task_id}: {exception!r}")
 
 
-def _dbt_env() -> dict:
+def _dbt_env(scratch: str) -> dict:
     """Build env with Snowflake creds from the Airflow connection + writable scratch dirs."""
     conn = BaseHook.get_connection("snowflake_default")
-    scratch = tempfile.mkdtemp(prefix="dbt_load_audit_")
     return {
         **os.environ,
         "DBT_LOG_PATH": f"{scratch}/logs",
@@ -39,7 +38,9 @@ def _dbt_env() -> dict:
     }
 
 
-def _run_dbt(args: list[str]) -> None:
+def _run_dbt(args: list[str], *, packages_path: str, env: dict) -> None:
+    # Project mount is read-only; packages must land in a writable path.
+    # Cosmos DAGs get this via install_deps=True — this DAG shells out directly.
     cmd = [
         DBT_EXECUTABLE,
         *args,
@@ -47,14 +48,25 @@ def _run_dbt(args: list[str]) -> None:
         DBT_PROJECT_DIR,
         "--profiles-dir",
         DBT_PROJECT_DIR,
+        "--packages-install-path",
+        packages_path,
         "--target",
         "prod",
         "--quiet",
     ]
     print(f"Running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, env=_dbt_env(), cwd=DBT_PROJECT_DIR)
+    result = subprocess.run(cmd, env=env, cwd=DBT_PROJECT_DIR)
     if result.returncode != 0:
         raise RuntimeError(f"dbt {' '.join(args)} exited with code {result.returncode}")
+
+
+def _prepare_dbt() -> tuple[str, dict]:
+    """Writable scratch + installed packages (elementary overrides the test materialization)."""
+    scratch = tempfile.mkdtemp(prefix="dbt_load_audit_")
+    packages_path = f"{scratch}/dbt_packages"
+    env = _dbt_env(scratch)
+    _run_dbt(["deps"], packages_path=packages_path, env=env)
+    return packages_path, env
 
 
 @dag(
@@ -79,12 +91,22 @@ def skytrax_load_audit():
     @task
     def source_freshness():
         """Fail if LOAD_AUDIT.load_ts is stale (warn 3d / error 7d)."""
-        _run_dbt(["source", "freshness", "--select", "source:SKYTRAX_REVIEWS.LOAD_AUDIT"])
+        packages_path, env = _prepare_dbt()
+        _run_dbt(
+            ["source", "freshness", "--select", "source:SKYTRAX_REVIEWS.LOAD_AUDIT"],
+            packages_path=packages_path,
+            env=env,
+        )
 
     @task
     def test_load_audit():
         """Run LOAD_AUDIT schema tests + singular reconciliation tests."""
-        _run_dbt(["test", "--select", LOAD_AUDIT_SELECT])
+        packages_path, env = _prepare_dbt()
+        _run_dbt(
+            ["test", "--select", LOAD_AUDIT_SELECT],
+            packages_path=packages_path,
+            env=env,
+        )
 
     source_freshness() >> test_load_audit()
 
