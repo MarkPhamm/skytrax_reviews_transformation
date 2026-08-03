@@ -100,3 +100,11 @@ Verify with `describe table SKYTRAX_REVIEWS_DB.MARTS.FCT_REVIEW;` before
 re-running/re-triggering the deploy — a stale local checkout will silently
 full-refresh using the *old* model code and look like it worked without
 actually fixing anything.
+
+## Data plausibility
+
+`tests/assert_spirit_aircraft_airbus.sql` (severity **warn**) flags Spirit
+Airlines reviews whose joined aircraft manufacturer is not Airbus/Unknown.
+Spirit operates an all-A320-family fleet; free-text aircraft fields can invent
+impossible types — treat warn rows as quarantine candidates, not always a join bug.
+
