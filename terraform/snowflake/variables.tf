@@ -45,6 +45,12 @@ variable "warehouse_auto_suspend" {
   default     = 60
 }
 
+variable "monthly_credit_quota" {
+  description = "Monthly credit cap enforced by the shared resource monitor across all project warehouses"
+  type        = number
+  default     = 10
+}
+
 # --- User Passwords ---
 
 variable "prod_dbt_password" {
