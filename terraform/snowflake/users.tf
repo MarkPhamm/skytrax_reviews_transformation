@@ -3,9 +3,12 @@
 # -----------------------------------------------------------------------------
 
 resource "snowflake_user" "prod_dbt" {
-  name              = "PROD_DBT"
-  login_name        = "PROD_DBT"
-  password          = var.prod_dbt_password
+  name       = "PROD_DBT"
+  login_name = "PROD_DBT"
+  password   = var.prod_dbt_password
+  # Optional key-pair auth (see docs/keypair-auth.md). Null until the key is
+  # provisioned; password auth continues to work alongside it.
+  rsa_public_key    = var.prod_dbt_rsa_public_key
   default_warehouse = snowflake_warehouse.compute["XSMALL"].name
   default_role      = snowflake_account_role.transformer.name
   default_namespace = "${var.database_name}.STAGING"
@@ -13,9 +16,12 @@ resource "snowflake_user" "prod_dbt" {
 }
 
 resource "snowflake_user" "cicd" {
-  name              = "DBT_CICD"
-  login_name        = "DBT_CICD"
-  password          = var.cicd_user_password
+  name       = "DBT_CICD"
+  login_name = "DBT_CICD"
+  password   = var.cicd_user_password
+  # Optional key-pair auth (see docs/keypair-auth.md). Null until the key is
+  # provisioned; password auth continues to work alongside it.
+  rsa_public_key    = var.cicd_rsa_public_key
   default_warehouse = snowflake_warehouse.compute["XSMALL"].name
   default_role      = snowflake_account_role.transformer.name
   default_namespace = "${var.database_name}.STAGING"
